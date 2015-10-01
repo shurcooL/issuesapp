@@ -1,0 +1,33 @@
+<html>
+	<head>
+		<link href="/assets/style.css" rel="stylesheet" type="text/css" />
+		<script src="/assets/script/script.js" type="text/javascript"></script>
+		<link href="//cdnjs.cloudflare.com/ajax/libs/octicons/2.1.2/octicons.css" media="all" rel="stylesheet" type="text/css" />
+	</head>
+	<body>
+		<h2>post-comment.html</h2>
+		{{template "post-comment" .}}
+	</body>
+</html>
+
+{{define "post-comment"}}
+<div style="display: flex;">
+	<a href="{{.User.HTMLURL}}" target="_blank">
+		<img class="comment-avatar" alt="@{{.User.Login}}" width="48" height="48" src="{{.User.AvatarURL}}&amp;s=96">
+	</a>
+	<div class="list-entry" style="flex-grow: 1;">
+		<div class="list-entry-header tabs" style="display: flex;">
+			<span style="flex-grow: 1; font-size: 14px;">
+				<a id="write-tab-link" class="black tab-link active" href="javascript:SwitchWriteTab();">Write</a>
+				<a id="preview-tab-link" class="black tab-link" href="javascript:MarkdownPreview();">Preview</a>
+			</span>
+			<span class="gray"><span style="margin-right: 6px;" class="octicon octicon-markdown"></span>Markdown supported</span>
+		</div>
+		<div class="list-entry-body">
+			<textarea id="comment-editor" placeholder="Leave a comment"></textarea>
+			<div id="comment-preview" class="markdown-body" style="padding: 10px; min-height: 100px; display: none;"></div>
+			<div style="text-align: right; margin-top: 10px;"><button>Comment</button></div>
+		</div>
+	</div>
+</div>
+{{end}}
