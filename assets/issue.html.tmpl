@@ -6,6 +6,7 @@
 	</head>
 	<body>
 		<h1>{{.Issue.Title}} <span class="gray">#{{.Issue.Number}}</span></h1>
+		<div style="margin-bottom: 20px;">{{template "issue-badge" (printf .Issue.State)}}</div>
 		{{template "comment" .Issue}}
 		{{range .Comments}}
 		{{template "comment" .}}

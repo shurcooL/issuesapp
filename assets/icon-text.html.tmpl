@@ -1,0 +1,29 @@
+<html>
+	<head>
+		<link href="/assets/style.css" rel="stylesheet" type="text/css" />
+		<script src="/assets/script/script.js" type="text/javascript"></script>
+		<link href="//cdnjs.cloudflare.com/ajax/libs/octicons/2.1.2/octicons.css" media="all" rel="stylesheet" type="text/css" />
+	</head>
+	<body>
+		<div>{{template "issue-badge" "open"}}</div>
+		<div>{{template "issue-badge" "closed"}}</div>
+	</body>
+</html>
+
+{{define "issue-badge"}}
+	{{if eq . "open"}}
+		{{template "open-badge"}}
+	{{else if eq . "closed"}}
+		{{template "closed-badge"}}
+	{{else}}
+		{{.}}
+	{{end}}
+{{end}}
+
+{{define "open-badge"}}
+<span style="display: inline-block; padding: 4px 6px 4px 6px; margin: 4px; color: #fff; background-color: #6cc644;"><span style="margin-right: 6px;" class="octicon octicon-issue-opened"></span>Open</span>
+{{end}}
+
+{{define "closed-badge"}}
+<span style="display: inline-block; padding: 4px 6px 4px 6px; margin: 4px; color: #fff; background-color: #bd2c00;"><span style="margin-right: 6px;" class="octicon octicon-issue-closed"></span>Closed</span>
+{{end}}
