@@ -25,7 +25,7 @@ type Service interface {
 
 	Create(ctx context.Context, repo RepoSpec, issue Issue) (Issue, error)
 
-	Edit(ctx context.Context, repo RepoSpec, id uint64, req IssueRequest) (Issue, error)
+	Edit(ctx context.Context, repo RepoSpec, id uint64, ir IssueRequest) (Issue, error)
 
 	// TODO: This doesn't belong here, does it?
 	CurrentUser() User
@@ -85,7 +85,7 @@ type User struct {
 
 // IssueRequest is a request to edit an issue.
 type IssueRequest struct {
-	State *string
+	State *string // TODO: Enum.
 	Title *string
 }
 

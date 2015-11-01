@@ -246,6 +246,12 @@ func createIssueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
+	if err := req.ParseForm(); err != nil {
+		log.Println("req.ParseForm:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	ctx := context.TODO()
 	vars := mux.Vars(req)
 
@@ -268,22 +274,46 @@ func postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
-	ctx := context.TODO()
-	vars := mux.Vars(req)
-
-	var issueReq issues.IssueRequest
-	err := json.Unmarshal([]byte(req.PostForm.Get("value")), &issueReq)
-	if err != nil {
-		log.Println("Decode:", err)
+	if err := req.ParseForm(); err != nil {
+		log.Println("req.ParseForm:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	issue, err := is.Edit(ctx, issues.RepoSpec{Owner: vars["owner"], Repo: vars["repo"]}, uint64(mustAtoi(vars["id"])), issueReq)
+	ctx := context.TODO()
+	vars := mux.Vars(req)
+
+	var ir issues.IssueRequest
+	err := json.Unmarshal([]byte(req.PostForm.Get("value")), &ir)
+	if err != nil {
+		log.Println("postEditIssueHandler json.Unmarshal:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	issue, err := is.Edit(ctx, issues.RepoSpec{Owner: vars["owner"], Repo: vars["repo"]}, uint64(mustAtoi(vars["id"])), ir)
 	if err != nil {
 		log.Println("is.Edit:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// TODO: Move to right place?
+	issueEvent := issues.Event{
+		Actor:     is.CurrentUser(),
+		CreatedAt: time.Now(),
+	}
+	switch {
+	case ir.State != nil && *ir.State == "open":
+		issueEvent.Type = issues.Reopened
+	case ir.State != nil && *ir.State == "closed":
+		issueEvent.Type = issues.Closed
+	case ir.Title != nil:
+		issueEvent.Type = issues.Renamed
+		issueEvent.Rename = &issues.Rename{
+			From: "TODO",
+			To:   *ir.Title,
+		}
 	}
 
 	err = func(w io.Writer, issue issues.Issue) error {
@@ -301,6 +331,12 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 			return err
 		}
 		resp.Set("issue-toggle-button", buf.String())
+		buf.Reset()
+		err = t.ExecuteTemplate(&buf, "event", issueEvent)
+		if err != nil {
+			return err
+		}
+		resp.Set("new-event", buf.String())
 
 		_, err = io.WriteString(w, resp.Encode())
 		return err
@@ -313,6 +349,12 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func postCommentHandler(w http.ResponseWriter, req *http.Request) {
+	if err := req.ParseForm(); err != nil {
+		log.Println("req.ParseForm:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	ctx := context.TODO()
 	vars := mux.Vars(req)
 
@@ -349,8 +391,8 @@ func main() {
 	r.HandleFunc("/github.com/{owner}/{repo}/issues/{id:[0-9]+}", issueHandler).Methods("GET")
 	r.HandleFunc("/github.com/{owner}/{repo}/issues/{id:[0-9]+}/comment", postCommentHandler).Methods("POST")
 	r.HandleFunc("/github.com/{owner}/{repo}/issues/{id:[0-9]+}/edit", postEditIssueHandler).Methods("POST")
-	r.HandleFunc("/new", createIssueHandler).Methods("GET")
-	r.HandleFunc("/new", postCreateIssueHandler).Methods("POST")
+	r.HandleFunc("/github.com/{owner}/{repo}/issues/new", createIssueHandler).Methods("GET")
+	r.HandleFunc("/github.com/{owner}/{repo}/issues/new", postCreateIssueHandler).Methods("POST")
 	http.Handle("/", r)
 	http.Handle("/assets/", gzip_file_server.New(assets))
 	http.HandleFunc("/debug", debugHandler)

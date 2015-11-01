@@ -26,7 +26,7 @@ func main() {
 	js.Global.Set("MarkdownPreview", MarkdownPreview)
 	js.Global.Set("SwitchWriteTab", SwitchWriteTab)
 	js.Global.Set("CreateNewIssue", CreateNewIssue)
-	js.Global.Set("ToggleIssueStatus", ToggleIssueStatus)
+	js.Global.Set("ToggleIssueState", ToggleIssueState)
 	js.Global.Set("PostComment", PostComment)
 
 	stateJSON := js.Global.Get("State").String()
@@ -49,7 +49,7 @@ func CreateNewIssue() {
 	}
 
 	go func() {
-		resp, err := http.PostForm(state.BaseURI+"/new", url.Values{"csrf_token": {state.CSRFToken}, "title": {title}, "body": {body}})
+		resp, err := http.PostForm("new", url.Values{"csrf_token": {state.CSRFToken}, "title": {title}, "body": {body}})
 		if err != nil {
 			log.Println(err)
 			return
@@ -70,13 +70,13 @@ func CreateNewIssue() {
 	}()
 }
 
-func ToggleIssueStatus(status string) {
+func ToggleIssueState(issueState string) {
 	newString := func(s string) *string { return &s }
 
-	issueReq := issues.IssueRequest{
-		State: newString(status),
+	ir := issues.IssueRequest{
+		State: newString(issueState),
 	}
-	value, err := json.Marshal(issueReq)
+	value, err := json.Marshal(ir)
 	if err != nil {
 		panic(err)
 	}
@@ -108,6 +108,12 @@ func ToggleIssueStatus(status string) {
 
 			issueToggleButton := document.GetElementByID("issue-toggle-button")
 			issueToggleButton.Underlying().Set("outerHTML", data.Get("issue-toggle-button"))
+
+			// Create event.
+			newEvent := document.CreateElement("div").(*dom.HTMLDivElement)
+			newItemMarker := document.GetElementByID("new-item-marker")
+			newItemMarker.ParentNode().InsertBefore(newEvent, newItemMarker)
+			newEvent.Underlying().Set("outerHTML", data.Get("new-event"))
 		}
 	}()
 }
@@ -141,8 +147,8 @@ func PostComment() {
 			// Create comment.
 			newComment := document.CreateElement("div").(*dom.HTMLDivElement)
 
-			newCommentMarker := document.GetElementByID("new-comment-marker")
-			newCommentMarker.ParentNode().InsertBefore(newComment, newCommentMarker)
+			newItemMarker := document.GetElementByID("new-item-marker")
+			newItemMarker.ParentNode().InsertBefore(newComment, newItemMarker)
 
 			newComment.Underlying().Set("outerHTML", string(body))
 

@@ -27,7 +27,7 @@
 		<div class="list-entry-body">
 			<textarea id="comment-editor" placeholder="Leave a comment"></textarea>
 			<div id="comment-preview" class="markdown-body" style="padding: 10px; min-height: 100px; display: none;"></div>
-			<div style="text-align: right; margin-top: 10px;">{{template "toggle-button" (printf "open")}}<button class="btn btn-success btn-small" onclick="PostComment();">Comment</button></div>
+			<div style="text-align: right; margin-top: 10px;">{{template "toggle-button" (printf .Issue.State)}}<button class="btn btn-success btn-small" onclick="PostComment();">Comment</button></div>
 		</div>
 	</div>
 </div>

@@ -8,11 +8,13 @@
 </html>
 
 {{define "new-issue"}}
-<div style="display: flex; margin-top: 20px;">
-	<div><a href="{{.CurrentUser.HTMLURL}}" target="_blank">
-		<img class="comment-avatar" alt="@{{.CurrentUser.Login}}" width="48" height="48" src="{{.CurrentUser.AvatarURL}}">
-	</a></div>
-	<div class="list-entry" style="flex-grow: 1;">
+<div style="display: flex; margin-top: 20px;" class="list-entry">
+	<div>
+		<a href="{{.CurrentUser.HTMLURL}}" target="_blank">
+			<img class="comment-avatar" width="48" height="48" src="{{.CurrentUser.AvatarURL}}">
+		</a>
+	</div>
+	<div class="list-entry-border" style="flex-grow: 1;">
 		<div class="list-entry-header tabs-title">
 			<div><input id="title-editor" type="text" placeholder="Title" autofocus></div>
 			<div style="display: flex;">

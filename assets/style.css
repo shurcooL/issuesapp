@@ -147,7 +147,7 @@ textarea#comment-editor:focus {
 }
 .event-icon {
 	float: left;
-	margin-right: 6px;
+	margin-right: 10px;
 	width: 32px;
 	height: 32px;
 	line-height: 28px;

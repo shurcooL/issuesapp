@@ -21,7 +21,10 @@ func init() {
 }
 
 func setup() {
-	textArea := document.GetElementByID("comment-editor").(*dom.HTMLTextAreaElement)
+	textArea, ok := document.GetElementByID("comment-editor").(*dom.HTMLTextAreaElement)
+	if !ok {
+		return
+	}
 
 	textArea.AddEventListener("paste", false, func(e dom.Event) {
 		ce := e.(*dom.ClipboardEvent)

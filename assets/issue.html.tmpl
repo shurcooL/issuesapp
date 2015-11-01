@@ -4,11 +4,6 @@
 	</head>
 	<body>
 		{{template "issue" .}}
-
-		<pre>{{dump .Issue}}</pre>
-		<pre>{{dump .Comments}}</pre>
-		<pre>{{jsonfmt .Issue}}</pre>
-		<pre>{{jsonfmt .Comments}}</pre>
 	</body>
 </html>
 
@@ -18,7 +13,7 @@
 	{{range .Items}}
 		{{template "issue-item" .}}
 	{{end}}
-	<div id="new-comment-marker"></div>
+	<div id="new-item-marker"></div>
 	{{template "new-comment" .}}
 {{end}}
 

@@ -20,9 +20,6 @@ func NewService(client *github.Client) issues.Service {
 
 type service struct {
 	cl *github.Client
-
-	// TODO.
-	issues.Service
 }
 
 func (s service) ListByRepo(_ context.Context, repo issues.RepoSpec, opt interface{}) ([]issues.Issue, error) {
@@ -145,6 +142,77 @@ func (s service) ListEvents(_ context.Context, repo issues.RepoSpec, id uint64, 
 	}
 
 	return events, nil
+}
+
+func (s service) CreateComment(_ context.Context, repo issues.RepoSpec, id uint64, c issues.Comment) (issues.Comment, error) {
+	comment, _, err := s.cl.Issues.CreateComment(repo.Owner, repo.Repo, int(id), &github.IssueComment{
+		Body: &c.Body,
+	})
+	if err != nil {
+		return issues.Comment{}, err
+	}
+
+	return issues.Comment{
+		User: issues.User{
+			Login:     *comment.User.Login,
+			AvatarURL: template.URL(*comment.User.AvatarURL),
+			HTMLURL:   template.URL(*comment.User.HTMLURL),
+		},
+		CreatedAt: *comment.CreatedAt,
+		Body:      *comment.Body,
+	}, nil
+}
+
+func (s service) Create(_ context.Context, repo issues.RepoSpec, i issues.Issue) (issues.Issue, error) {
+	issue, _, err := s.cl.Issues.Create(repo.Owner, repo.Repo, &github.IssueRequest{
+		Title: &i.Title,
+		Body:  &i.Body,
+	})
+	if err != nil {
+		return issues.Issue{}, err
+	}
+
+	return issues.Issue{
+		ID:    uint64(*issue.Number),
+		State: *issue.State,
+		Title: *issue.Title,
+		Comment: issues.Comment{
+			User: issues.User{
+				Login:     *issue.User.Login,
+				AvatarURL: template.URL(*issue.User.AvatarURL),
+				HTMLURL:   template.URL(*issue.User.HTMLURL),
+			},
+			CreatedAt: *issue.CreatedAt,
+		},
+	}, nil
+}
+
+func (s service) Edit(_ context.Context, repo issues.RepoSpec, id uint64, ir issues.IssueRequest) (issues.Issue, error) {
+	if err := ir.Validate(); err != nil {
+		return issues.Issue{}, err
+	}
+
+	issue, _, err := s.cl.Issues.Edit(repo.Owner, repo.Repo, int(id), &github.IssueRequest{
+		State: ir.State,
+		Title: ir.Title,
+	})
+	if err != nil {
+		return issues.Issue{}, err
+	}
+
+	return issues.Issue{
+		ID:    uint64(*issue.Number),
+		State: *issue.State,
+		Title: *issue.Title,
+		Comment: issues.Comment{
+			User: issues.User{
+				Login:     *issue.User.Login,
+				AvatarURL: template.URL(*issue.User.AvatarURL),
+				HTMLURL:   template.URL(*issue.User.HTMLURL),
+			},
+			CreatedAt: *issue.CreatedAt,
+		},
+	}, nil
 }
 
 func (service) CurrentUser() issues.User {

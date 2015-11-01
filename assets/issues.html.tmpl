@@ -4,7 +4,6 @@
 	</head>
 	<body>
 		{{template "issues" .Issues}}
-		<pre>{{dump .Issues}}</pre>
 	</body>
 </html>
 
@@ -20,7 +19,7 @@
 {{end}}
 
 {{define "issues"}}
-<div class="list-entry">
+<div class="list-entry list-entry-border">
 	<div class="list-entry-header">
 		{{len $}} Open
 	</div>
