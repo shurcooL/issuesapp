@@ -13,7 +13,9 @@
 {{define "event"}}
 <div class="list-entry event event-{{.Type}}">
 	<span class="octicon {{(event .).Octicon}} event-icon"></span>
-	<img class="inline-avatar" width="16" height="16" src="{{.Actor.AvatarURL}}">
-	<span><a class="black" href="{{.Actor.HTMLURL}}" target="_blank"><strong>{{.Actor.Login}}</strong></a> {{(event .).Text}} {{template "time" .CreatedAt}}</span>
+	<div class="event-header">
+		<img class="inline-avatar" width="16" height="16" src="{{.Actor.AvatarURL}}">
+		<a class="black" href="{{.Actor.HTMLURL}}" target="_blank"><strong>{{.Actor.Login}}</strong></a> {{(event .).Text}} {{template "time" .CreatedAt}}
+	</div>
 </div>
 {{end}}

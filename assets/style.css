@@ -93,7 +93,6 @@ span.right-icon a:hover {
 	border-radius: 3px;
 }
 .inline-avatar {
-	margin-right: 2px;
 	border-radius: 2px;
 	margin-top: -2px;
 }
@@ -141,7 +140,13 @@ textarea#comment-editor:focus {
 .event {
 	margin-left: 60px;
 }
+.event-header {
+	padding-top: 6px;
+	padding-bottom: 6px;
+	line-height: 20px;
+}
 .event-icon {
+	float: left;
 	margin-right: 6px;
 	width: 32px;
 	height: 32px;
