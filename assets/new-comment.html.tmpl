@@ -12,15 +12,15 @@
 {{define "new-comment"}}
 <div style="display: flex;" class="list-entry">
 	<div>
-		<a href="{{.CurrentUser.HTMLURL}}" target="_blank">
+		<a href="{{.CurrentUser.HTMLURL}}" target="_blank" tabindex=-1>
 			<img class="comment-avatar" width="48" height="48" src="{{.CurrentUser.AvatarURL}}">
 		</a>
 	</div>
 	<div class="list-entry-border" style="flex-grow: 1;">
 		<div class="list-entry-header tabs" style="display: flex;">
 			<span style="flex-grow: 1; font-size: 14px;">
-				<a id="write-tab-link" class="black tab-link active" href="javascript:SwitchWriteTab();">Write</a>
-				<a id="preview-tab-link" class="black tab-link" href="javascript:MarkdownPreview();">Preview</a>
+				<a id="write-tab-link" class="black tab-link active" tabindex=-1 href="javascript:SwitchWriteTab();">Write</a>
+				<a id="preview-tab-link" class="black tab-link" tabindex=-1 href="javascript:MarkdownPreview();">Preview</a>
 			</span>
 			<span class="gray"><span style="margin-right: 6px;" class="octicon octicon-markdown"></span>Markdown supported</span>
 		</div>

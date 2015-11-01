@@ -17,10 +17,10 @@ const (
 )
 
 func init() {
-	document.AddEventListener("DOMContentLoaded", false, func(_ dom.Event) { setup() })
+	document.AddEventListener("DOMContentLoaded", false, func(_ dom.Event) { setup2() })
 }
 
-func setup() {
+func setup2() {
 	textArea, ok := document.GetElementByID("comment-editor").(*dom.HTMLTextAreaElement)
 	if !ok {
 		return
