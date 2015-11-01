@@ -122,15 +122,27 @@ func (s service) ListEvents(_ context.Context, repo issues.RepoSpec, id uint64, 
 		return events, err
 	}
 	for _, event := range ghEvents {
-		events = append(events, issues.Event{
+		et := issues.EventType(*event.Event)
+		if !et.Valid() {
+			continue
+		}
+		e := issues.Event{
 			Actor: issues.User{
 				Login:     *event.Actor.Login,
 				AvatarURL: template.URL(*event.Actor.AvatarURL),
 				HTMLURL:   template.URL(*event.Actor.HTMLURL),
 			},
 			CreatedAt: *event.CreatedAt,
-			Type:      issues.EventType(*event.Event),
-		})
+			Type:      et,
+		}
+		switch et {
+		case issues.Renamed:
+			e.Rename = &issues.Rename{
+				From: *event.Rename.From,
+				To:   *event.Rename.To,
+			}
+		}
+		events = append(events, e)
 	}
 
 	return events, nil

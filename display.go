@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"html/template"
 	"time"
 
 	"github.com/gopherjs/gopherpen/issues"
+	"github.com/shurcooL/htmlg"
 )
 
 // issueItem represents an event item for display purposes.
@@ -47,12 +50,25 @@ type event struct {
 	issues.Event
 }
 
+func (e event) Text() template.HTML {
+	switch e.Event.Type {
+	case issues.Reopened, issues.Closed:
+		return htmlg.Render(htmlg.Text(fmt.Sprintf("%s this", e.Event.Type)))
+	case issues.Renamed:
+		return htmlg.Render(htmlg.Text("changed the title from "), htmlg.Strong(e.Event.Rename.From), htmlg.Text(" to "), htmlg.Strong(e.Event.Rename.To))
+	default:
+		panic("unexpected event")
+	}
+}
+
 func (e event) Octicon() string {
 	switch e.Event.Type {
 	case issues.Reopened:
 		return "octicon-primitive-dot"
 	case issues.Closed:
 		return "octicon-circle-slash"
+	case issues.Renamed:
+		return "octicon-pencil"
 	default:
 		panic("unexpected event")
 	}

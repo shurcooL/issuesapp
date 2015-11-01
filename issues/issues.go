@@ -52,6 +52,7 @@ type Event struct {
 	Actor     User
 	CreatedAt time.Time
 	Type      EventType
+	Rename    *Rename
 }
 
 type EventType string
@@ -59,7 +60,22 @@ type EventType string
 const (
 	Reopened EventType = "reopened"
 	Closed             = "closed"
+	Renamed            = "renamed"
 )
+
+func (et EventType) Valid() bool {
+	switch et {
+	case Reopened, Closed, Renamed:
+		return true
+	default:
+		return false
+	}
+}
+
+type Rename struct {
+	From string
+	To   string
+}
 
 // User represents a user.
 type User struct {
