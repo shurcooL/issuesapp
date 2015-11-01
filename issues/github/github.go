@@ -23,7 +23,7 @@ type service struct {
 }
 
 func (s service) ListByRepo(_ context.Context, repo issues.RepoSpec, opt interface{}) ([]issues.Issue, error) {
-	ghIssuesAndPRs, _, err := s.cl.Issues.ListByRepo(repo.Owner, repo.Repo, &github.IssueListByRepoOptions{State: "open"})
+	ghIssuesAndPRs, _, err := s.cl.Issues.ListByRepo(repo.Owner, repo.Repo, nil)
 	if err != nil {
 		return nil, err
 	}

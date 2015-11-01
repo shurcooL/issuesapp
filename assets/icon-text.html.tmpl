@@ -8,6 +8,7 @@
 	</body>
 </html>
 
+{{/* TODO: Try to use issues.OpenState and issues.ClosedState constants. */}}
 {{define "issue-badge"}}
 	{{if eq . "open"}}
 		{{template "open-badge"}}
@@ -26,6 +27,7 @@
 <span style="display: inline-block; padding: 4px 6px 4px 6px; margin: 4px; color: #fff; background-color: #bd2c00;"><span style="margin-right: 6px;" class="octicon octicon-issue-closed"></span>Closed</span>
 {{end}}
 
+{{/* TODO: Try to use issues.OpenState and issues.ClosedState constants. */}}
 {{define "toggle-button"}}
 	{{if eq . "open"}}
 		{{template "close-button"}}

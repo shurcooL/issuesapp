@@ -58,8 +58,8 @@ type EventType string
 
 const (
 	Reopened EventType = "reopened"
-	Closed             = "closed"
-	Renamed            = "renamed"
+	Closed   EventType = "closed"
+	Renamed  EventType = "renamed"
 )
 
 func (et EventType) Valid() bool {
@@ -85,14 +85,22 @@ type User struct {
 
 // IssueRequest is a request to edit an issue.
 type IssueRequest struct {
-	State *string // TODO: Enum.
+	State *State
 	Title *string
 }
+
+// State represents the issue state.
+type State string
+
+const (
+	OpenState   State = "open"
+	ClosedState State = "closed"
+)
 
 func (ir IssueRequest) Validate() error {
 	if ir.State != nil {
 		switch *ir.State {
-		case "open", "closed":
+		case OpenState, ClosedState:
 		default:
 			return fmt.Errorf("bad state")
 		}

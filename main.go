@@ -78,7 +78,7 @@ func baseState(req *http.Request) BaseState {
 }
 
 func (s state) Issues() ([]issues.Issue, error) {
-	return is.ListByRepo(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, &github.IssueListByRepoOptions{State: "open"})
+	return is.ListByRepo(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, nil)
 }
 
 func mustAtoi(s string) int {
@@ -304,9 +304,9 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 		CreatedAt: time.Now(),
 	}
 	switch {
-	case ir.State != nil && *ir.State == "open":
+	case ir.State != nil && *ir.State == issues.OpenState:
 		issueEvent.Type = issues.Reopened
-	case ir.State != nil && *ir.State == "closed":
+	case ir.State != nil && *ir.State == issues.ClosedState:
 		issueEvent.Type = issues.Closed
 	case ir.Title != nil:
 		issueEvent.Type = issues.Renamed

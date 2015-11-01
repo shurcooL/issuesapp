@@ -179,7 +179,7 @@ func (s service) Create(ctx context.Context, repo issues.RepoSpec, i issues.Issu
 	sg := sourcegraph.NewClientFromContext(ctx)
 
 	issue := issue{
-		State: "open",
+		State: issues.OpenState,
 		Title: i.Title,
 		comment: comment{
 			AuthorUID: putil.UserFromContext(ctx).UID,
