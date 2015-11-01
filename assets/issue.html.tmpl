@@ -15,12 +15,17 @@
 {{define "issue"}}
 	<h1>{{.Issue.Title}} <span class="gray">#{{.Issue.ID}}</span></h1>
 	<div id="issue-state-badge" style="margin-bottom: 20px;">{{template "issue-badge" (printf .Issue.State)}}</div>
-	{{range .Comments}}
-		{{template "comment" .}}
-	{{end}}
-	{{range .Events}}
-		{{template "event" .}}
+	{{range .Items}}
+		{{template "issue-item" .}}
 	{{end}}
 	<div id="new-comment-marker"></div>
 	{{template "new-comment" .}}
+{{end}}
+
+{{define "issue-item"}}
+	{{if eq .TemplateName "comment"}}
+		{{template "comment" .IssueItem}}
+	{{else if eq .TemplateName "event"}}
+		{{template "event" .IssueItem}}
+	{{end}}
 {{end}}

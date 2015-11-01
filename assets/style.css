@@ -60,6 +60,17 @@ div.multilist-entry:not(:nth-child(0n+2)) {
 .markdown-body>*:last-child {
 	margin-bottom: 0;
 }
+.markdown-body blockquote>*:first-child {
+	margin-top: 0;
+}
+.markdown-body blockquote>*:last-child {
+	margin-bottom: 0;
+}
+.markdown-body blockquote {
+	padding-left: 12px;
+	color: #777;
+	border-left: 4px solid #ddd;
+}
 
 span.content {
 	display: table-cell;

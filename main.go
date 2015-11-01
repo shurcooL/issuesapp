@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -98,6 +99,26 @@ func (s state) Comments() (interface{}, error) {
 
 func (s state) Events() (interface{}, error) {
 	return is.ListEvents(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, uint64(mustAtoi(s.vars["id"])), nil)
+}
+
+func (s state) Items() (interface{}, error) {
+	cs, err := is.ListComments(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, uint64(mustAtoi(s.vars["id"])), nil)
+	if err != nil {
+		return nil, err
+	}
+	es, err := is.ListEvents(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, uint64(mustAtoi(s.vars["id"])), nil)
+	if err != nil {
+		return nil, err
+	}
+	var items []issueItem
+	for _, comment := range cs {
+		items = append(items, issueItem{comment})
+	}
+	for _, event := range es {
+		items = append(items, issueItem{event})
+	}
+	sort.Sort(byCreatedAt(items))
+	return items, nil
 }
 
 //var is issues.Service = fsissues.NewService()
