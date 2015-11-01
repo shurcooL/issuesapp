@@ -1,7 +1,11 @@
 body {
 	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 	font-size: 14px;
+	line-height: initial;
 	margin: 20px;
+}
+.btn {
+	font-size: 14px;
 }
 
 a.black {
@@ -20,9 +24,12 @@ a.black:hover {
 }
 
 div.list-entry {
+	margin-top: 12px;
+	margin-bottom: 12px;
+}
+div.list-entry-border {
 	border: 1px solid #ddd;
 	border-radius: 4px;
-	margin-bottom: 12px;
 }
 div.list-entry-header {
 	font-size: 13px;
@@ -33,6 +40,10 @@ div.list-entry-header {
 }
 div.list-entry-header.tabs {
 	padding: 16px 10px 6px 10px;
+}
+div.list-entry-header.tabs-title {
+	padding-bottom: 6px;
+	background-color: #fff;
 }
 div.list-entry-body {
 	padding: 10px;
@@ -54,21 +65,40 @@ span.content {
 	display: table-cell;
 	width: 100%;
 }
-span.close {
+span.right-icon {
 	display: table-cell;
 	padding-left: 12px;
 	padding-right: 4px;
 }
-span.close a {
+span.right-icon a {
 	color: #bbb;
 }
-span.close a:hover {
+span.right-icon a:hover {
 	color: black;
 }
 
 .comment-avatar {
 	margin-right: 10px;
 	border-radius: 3px;
+}
+.inline-avatar {
+	margin-right: 2px;
+	border-radius: 2px;
+	margin-top: -2px;
+}
+
+input#title-editor {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 14px;
+	background-color: #fafafa;
+	display: block;
+	padding: 6px;
+	width: 100%;
+	border: 1px solid #ddd;
+	margin-bottom: 16px;
+}
+input#title-editor:focus {
+	background-color: #fff;
 }
 
 textarea#comment-editor {
@@ -95,4 +125,24 @@ textarea#comment-editor:focus {
 	background-color: #fff;
 	border: 1px solid #ddd;
 	border-bottom-width: 0;
+}
+
+.event {
+	margin-left: 60px;
+}
+.event-icon {
+	margin-right: 6px;
+	width: 32px;
+	height: 32px;
+	line-height: 28px;
+	color: #fff;
+	text-align: center;
+	border: 2px solid #fff;
+	border-radius: 50%;
+}
+.event-closed .event-icon {
+	background-color: #bd2c00;
+}
+.event-reopened .event-icon {
+	background-color: #6cc644;
 }

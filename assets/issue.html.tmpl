@@ -1,18 +1,26 @@
 <html>
 	<head>
-		<link href="/assets/style.css" rel="stylesheet" type="text/css" />
-		<script src="/assets/script/script.js" type="text/javascript"></script>
-		<link href="//cdnjs.cloudflare.com/ajax/libs/octicons/2.1.2/octicons.css" media="all" rel="stylesheet" type="text/css" />
+		{{template "head" .}}
 	</head>
 	<body>
-		<h1>{{.Issue.Title}} <span class="gray">#{{.Issue.Number}}</span></h1>
-		<div style="margin-bottom: 20px;">{{template "issue-badge" (printf .Issue.State)}}</div>
-		{{template "comment" .Issue}}
-		{{range .Comments}}
-		{{template "comment" .}}
-		{{end}}
-		{{template "post-comment" .}}
-		<!--pre>{{dump .Issue}}</pre>
-		<pre>{{dump .Comments}}</pre-->
+		{{template "issue" .}}
+
+		<pre>{{dump .Issue}}</pre>
+		<pre>{{dump .Comments}}</pre>
+		<pre>{{jsonfmt .Issue}}</pre>
+		<pre>{{jsonfmt .Comments}}</pre>
 	</body>
 </html>
+
+{{define "issue"}}
+	<h1>{{.Issue.Title}} <span class="gray">#{{.Issue.ID}}</span></h1>
+	<div id="issue-state-badge" style="margin-bottom: 20px;">{{template "issue-badge" (printf .Issue.State)}}</div>
+	{{range .Comments}}
+		{{template "comment" .}}
+	{{end}}
+	{{range .Events}}
+		{{template "event" .}}
+	{{end}}
+	<div id="new-comment-marker"></div>
+	{{template "new-comment" .}}
+{{end}}

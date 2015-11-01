@@ -3,16 +3,154 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/gopherjs/gopherpen/common"
+	"github.com/gopherjs/gopherpen/issues"
 	"github.com/shurcooL/github_flavored_markdown"
 	"honnef.co/go/js/dom"
 )
 
 var document = dom.GetWindow().Document().(dom.HTMLDocument)
 
+var state common.State
+
 func main() {
 	js.Global.Set("MarkdownPreview", MarkdownPreview)
 	js.Global.Set("SwitchWriteTab", SwitchWriteTab)
+	js.Global.Set("CreateNewIssue", CreateNewIssue)
+	js.Global.Set("ToggleIssueStatus", ToggleIssueStatus)
+	js.Global.Set("PostComment", PostComment)
+
+	stateJSON := js.Global.Get("State").String()
+	fmt.Println(stateJSON)
+	err := json.Unmarshal([]byte(stateJSON), &state)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func CreateNewIssue() {
+	titleEditor := document.GetElementByID("title-editor").(*dom.HTMLInputElement)
+	commentEditor := document.GetElementByID("comment-editor").(*dom.HTMLTextAreaElement)
+
+	title := titleEditor.Value
+	body := commentEditor.Value
+	if strings.TrimSpace(title) == "" {
+		log.Println("cannot create issue with empty title")
+		return
+	}
+
+	go func() {
+		resp, err := http.PostForm(state.BaseURI+"/new", url.Values{"csrf_token": {state.CSRFToken}, "title": {title}, "body": {body}})
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		fmt.Printf("got reply: %v\n%q\n", resp.Status, string(body))
+
+		switch resp.StatusCode {
+		case http.StatusOK:
+			// TODO: Redirect?
+		}
+	}()
+}
+
+func ToggleIssueStatus(status string) {
+	newString := func(s string) *string { return &s }
+
+	issueReq := issues.IssueRequest{
+		State: newString(status),
+	}
+	value, err := json.Marshal(issueReq)
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		resp, err := http.PostForm(state.BaseURI+state.ReqPath+"/edit", url.Values{"csrf_token": {state.CSRFToken}, "value": {string(value)}})
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		data, err := url.ParseQuery(string(body))
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		fmt.Printf("got reply: %v\n%q\n", resp.Status, data)
+
+		switch resp.StatusCode {
+		case http.StatusOK:
+			issueStateBadge := document.GetElementByID("issue-state-badge")
+			issueStateBadge.SetInnerHTML(data.Get("issue-state-badge"))
+
+			issueToggleButton := document.GetElementByID("issue-toggle-button")
+			issueToggleButton.Underlying().Set("outerHTML", data.Get("issue-toggle-button"))
+		}
+	}()
+}
+
+func PostComment() {
+	commentEditor := document.GetElementByID("comment-editor").(*dom.HTMLTextAreaElement)
+
+	value := commentEditor.Value
+	if strings.TrimSpace(value) == "" {
+		log.Println("cannot post empty comment")
+		return
+	}
+
+	go func() {
+		resp, err := http.PostForm(state.BaseURI+state.ReqPath+"/comment", url.Values{"csrf_token": {state.CSRFToken}, "value": {value}})
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		fmt.Printf("got reply: %v\n%q\n", resp.Status, string(body))
+
+		switch resp.StatusCode {
+		case http.StatusOK:
+			// Create comment.
+			newComment := document.CreateElement("div").(*dom.HTMLDivElement)
+
+			newCommentMarker := document.GetElementByID("new-comment-marker")
+			newCommentMarker.ParentNode().InsertBefore(newComment, newCommentMarker)
+
+			newComment.Underlying().Set("outerHTML", string(body))
+
+			// Reset new-comment component.
+			commentEditor.Value = ""
+			SwitchWriteTab()
+		}
+	}()
 }
 
 var previewActive = false

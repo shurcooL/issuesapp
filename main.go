@@ -1,24 +1,34 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"path"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/google/go-github/github"
+	"github.com/gopherjs/gopherpen/common"
+	"github.com/gopherjs/gopherpen/issues"
 	"github.com/gorilla/mux"
 	"github.com/shurcooL/github_flavored_markdown"
 	"github.com/shurcooL/go-goon"
 	"github.com/shurcooL/go/gzip_file_server"
 	"github.com/shurcooL/go/vfs/httpfs/html/vfstemplate"
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2"
+
+	ghissues "github.com/gopherjs/gopherpen/issues/github"
+	//fsissues "github.com/gopherjs/gopherpen/issues/fs"
 )
 
 var httpFlag = flag.String("http", ":8080", "Listen for HTTP connections on this address.")
@@ -29,38 +39,45 @@ func loadTemplates() error {
 	var err error
 	t = template.New("").Funcs(template.FuncMap{
 		"dump": func(v interface{}) string { return goon.Sdump(v) },
-		"time": humanize.Time,
-		"gfm":  func(s string) template.HTML { return template.HTML(github_flavored_markdown.Markdown([]byte(s))) },
+		"jsonfmt": func(v interface{}) (string, error) {
+			b, err := json.MarshalIndent(v, "", "\t")
+			return string(b), err
+		},
+		"reltime": humanize.Time,
+		"gfm":     func(s string) template.HTML { return template.HTML(github_flavored_markdown.Markdown([]byte(s))) },
+		"event":   func(e issues.Event) event { return event{e} },
 	})
 	t, err = vfstemplate.ParseGlob(assets, t, "/assets/*.tmpl")
 	return err
 }
 
-var gh = github.NewClient(nil)
-
-var state stateType
-
-type stateType struct {
-	mu   sync.Mutex
-	vars map[string]string
+type state struct {
+	BaseState
 }
 
-func (s stateType) Issues() ([]github.Issue, error) {
-	issuesPRs, _, err := gh.Issues.ListByRepo(s.vars["owner"], s.vars["repo"], &github.IssueListByRepoOptions{State: "open"})
-	if err != nil {
-		return nil, err
-	}
+type BaseState struct {
+	ctx  context.Context
+	vars map[string]string
 
-	// Filter out PRs.
-	var issues []github.Issue
-	for _, issue := range issuesPRs {
-		if issue.PullRequestLinks != nil {
-			continue
-		}
-		issues = append(issues, issue)
-	}
+	common.State
+}
 
-	return issues, nil
+func baseState(req *http.Request) BaseState {
+	ctx := context.TODO()
+	return BaseState{
+		ctx:  ctx,
+		vars: mux.Vars(req),
+
+		State: common.State{
+			//BaseURI:   pctx.BaseURI(ctx),
+			ReqPath: req.URL.Path,
+			//CSRFToken: pctx.CSRFToken(ctx),
+		},
+	}
+}
+
+func (s state) Issues() ([]issues.Issue, error) {
+	return is.ListByRepo(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, &github.IssueListByRepoOptions{State: "open"})
 }
 
 func mustAtoi(s string) int {
@@ -71,98 +88,38 @@ func mustAtoi(s string) int {
 	return i
 }
 
-func (s stateType) Issue() (interface{}, error) {
-	issue, _, err := gh.Issues.Get(s.vars["owner"], s.vars["repo"], mustAtoi(s.vars["id"]))
-	if err != nil {
-		return nil, err
-	}
-
-	return issue, nil
+func (s state) Issue() (interface{}, error) {
+	return is.Get(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, uint64(mustAtoi(s.vars["id"])))
 }
 
-func (s stateType) Comments() (interface{}, error) {
-	comments, _, err := gh.Issues.ListComments(s.vars["owner"], s.vars["repo"], mustAtoi(s.vars["id"]), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return comments, nil
+func (s state) Comments() (interface{}, error) {
+	return is.ListComments(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, uint64(mustAtoi(s.vars["id"])), nil)
 }
 
-func (s stateType) Comment() github.IssueComment {
-	newInt := func(v int) *int {
-		return &v
-	}
-	newString := func(v string) *string {
-		return &v
-	}
-	newTime := func(v time.Time) *time.Time {
-		return &v
-	}
-
-	return (github.IssueComment)(github.IssueComment{
-		ID:        (*int)(newInt(143399786)),
-		Body:      (*string)(newString("I've resolved this in 4387efb. Please re-open or leave a comment if there's still room for improvement here.")),
-		User:      s.User(),
-		CreatedAt: (*time.Time)(newTime(time.Unix(1443244474, 0).UTC())),
-		UpdatedAt: (*time.Time)(newTime(time.Unix(1443244474, 0).UTC())),
-		URL:       (*string)(newString("https://api.github.com/repos/shurcooL/vfsgen/issues/comments/143399786")),
-		HTMLURL:   (*string)(newString("https://github.com/shurcooL/vfsgen/issues/8#issuecomment-143399786")),
-		IssueURL:  (*string)(newString("https://api.github.com/repos/shurcooL/vfsgen/issues/8")),
-	})
+func (s state) Events() (interface{}, error) {
+	return is.ListEvents(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, uint64(mustAtoi(s.vars["id"])), nil)
 }
 
-func (stateType) User() *github.User {
-	newInt := func(v int) *int {
-		return &v
-	}
-	newBool := func(v bool) *bool {
-		return &v
-	}
-	newString := func(v string) *string {
-		return &v
-	}
+//var is issues.Service = fsissues.NewService()
+var is issues.Service = ghissues.NewService(gh)
 
-	return (*github.User)(&github.User{
-		Login:             (*string)(newString("shurcooL")),
-		ID:                (*int)(newInt(1924134)),
-		AvatarURL:         (*string)(newString("https://avatars.githubusercontent.com/u/1924134?v=3")),
-		HTMLURL:           (*string)(newString("https://github.com/shurcooL")),
-		GravatarID:        (*string)(newString("")),
-		Name:              (*string)(nil),
-		Company:           (*string)(nil),
-		Blog:              (*string)(nil),
-		Location:          (*string)(nil),
-		Email:             (*string)(nil),
-		Hireable:          (*bool)(nil),
-		Bio:               (*string)(nil),
-		PublicRepos:       (*int)(nil),
-		PublicGists:       (*int)(nil),
-		Followers:         (*int)(nil),
-		Following:         (*int)(nil),
-		CreatedAt:         (*github.Timestamp)(nil),
-		UpdatedAt:         (*github.Timestamp)(nil),
-		Type:              (*string)(newString("User")),
-		SiteAdmin:         (*bool)(newBool(false)),
-		TotalPrivateRepos: (*int)(nil),
-		OwnedPrivateRepos: (*int)(nil),
-		PrivateGists:      (*int)(nil),
-		DiskUsage:         (*int)(nil),
-		Collaborators:     (*int)(nil),
-		Plan:              (*github.Plan)(nil),
-		URL:               (*string)(newString("https://api.github.com/users/shurcooL")),
-		EventsURL:         (*string)(newString("https://api.github.com/users/shurcooL/events{/privacy}")),
-		FollowingURL:      (*string)(newString("https://api.github.com/users/shurcooL/following{/other_user}")),
-		FollowersURL:      (*string)(newString("https://api.github.com/users/shurcooL/followers")),
-		GistsURL:          (*string)(newString("https://api.github.com/users/shurcooL/gists{/gist_id}")),
-		OrganizationsURL:  (*string)(newString("https://api.github.com/users/shurcooL/orgs")),
-		ReceivedEventsURL: (*string)(newString("https://api.github.com/users/shurcooL/received_events")),
-		ReposURL:          (*string)(newString("https://api.github.com/users/shurcooL/repos")),
-		StarredURL:        (*string)(newString("https://api.github.com/users/shurcooL/starred{/owner}{/repo}")),
-		SubscriptionsURL:  (*string)(newString("https://api.github.com/users/shurcooL/subscriptions")),
-		TextMatches:       ([]github.TextMatch)(nil),
-		Permissions:       (*map[string]bool)(nil),
-	})
+var gh = github.NewClient(oauth2.NewClient(oauth2.NoContext, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ""})))
+
+func (s state) Comment() issues.Comment {
+	return is.Comment()
+}
+
+func (s state) Event() issues.Event {
+	return issues.Event{
+		Actor:     is.CurrentUser(),
+		CreatedAt: time.Now(),
+		Type:      issues.Closed,
+	}
+}
+
+// Apparently needed for "new-comment" component, etc.
+func (state) CurrentUser() issues.User {
+	return is.CurrentUser()
 }
 
 func mainHandler(w http.ResponseWriter, req *http.Request) {
@@ -173,12 +130,12 @@ func mainHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	tmpl := path.Base(req.URL.Path)
-
-	state.mu.Lock()
+	state := state{
+		BaseState: baseState(req),
+	}
 	err := t.ExecuteTemplate(w, tmpl+".tmpl", &state)
-	state.mu.Unlock()
 	if err != nil {
-		log.Println("t.Execute:", err)
+		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -191,14 +148,12 @@ func issuesHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(req)
-
-	state.mu.Lock()
-	state.vars = vars
+	state := state{
+		BaseState: baseState(req),
+	}
 	err := t.ExecuteTemplate(w, "issues.html.tmpl", &state)
-	state.mu.Unlock()
 	if err != nil {
-		log.Println("t.Execute:", err)
+		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -211,14 +166,145 @@ func issueHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	state := state{
+		BaseState: baseState(req),
+	}
+	err := t.ExecuteTemplate(w, "issue.html.tmpl", &state)
+	if err != nil {
+		log.Println("t.ExecuteTemplate:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func debugHandler(w http.ResponseWriter, req *http.Request) {
+	fmt.Println("debugHandler:", req.URL.Path)
+
+	/*ctx := putil.Context(req)
+	if repoRevSpec, ok := pctx.RepoRevSpec(ctx); ok {
+		_ = repoRevSpec
+	}
+	goon.DumpExpr(pctx.RepoRevSpec(ctx))*/
+
+	//io.WriteString(w, req.PostForm.Get("value"))
+}
+func debugIssueHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 
-	state.mu.Lock()
-	state.vars = vars
-	err := t.ExecuteTemplate(w, "issue.html.tmpl", &state)
-	state.mu.Unlock()
+	ie, _, err := gh.Issues.ListIssueEvents(vars["owner"], vars["repo"], mustAtoi(vars["id"]), nil)
 	if err != nil {
-		log.Println("t.Execute:", err)
+		log.Println("ListIssueEvents:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	io.WriteString(w, goon.SdumpExpr(ie))
+}
+
+func createIssueHandler(w http.ResponseWriter, req *http.Request) {
+	if err := loadTemplates(); err != nil {
+		log.Println("loadTemplates:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	state := state{
+		BaseState: baseState(req),
+	}
+	err := t.ExecuteTemplate(w, "new-issue.html.tmpl", &state)
+	if err != nil {
+		log.Println("t.ExecuteTemplate:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
+	ctx := context.TODO()
+	vars := mux.Vars(req)
+
+	issue := issues.Issue{
+		Title: req.PostForm.Get("title"),
+		Comment: issues.Comment{
+			Body: req.PostForm.Get("body"),
+		},
+	}
+
+	issue, err := is.Create(ctx, issues.RepoSpec{Owner: vars["owner"], Repo: vars["repo"]}, issue)
+	if err != nil {
+		log.Println("is.Create:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// TODO: Make this work...
+	//http.Redirect(w, req, fmt.Sprintf("%s/issues/%d", baseURI, issue.ID), http.StatusSeeOther)
+}
+
+func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
+	ctx := context.TODO()
+	vars := mux.Vars(req)
+
+	var issueReq issues.IssueRequest
+	err := json.Unmarshal([]byte(req.PostForm.Get("value")), &issueReq)
+	if err != nil {
+		log.Println("Decode:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	issue, err := is.Edit(ctx, issues.RepoSpec{Owner: vars["owner"], Repo: vars["repo"]}, uint64(mustAtoi(vars["id"])), issueReq)
+	if err != nil {
+		log.Println("is.Edit:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = func(w io.Writer, issue issues.Issue) error {
+		var resp = make(url.Values)
+
+		var buf bytes.Buffer
+		err := t.ExecuteTemplate(&buf, "issue-badge", issue.State)
+		if err != nil {
+			return err
+		}
+		resp.Set("issue-state-badge", buf.String())
+		buf.Reset()
+		err = t.ExecuteTemplate(&buf, "toggle-button", issue.State)
+		if err != nil {
+			return err
+		}
+		resp.Set("issue-toggle-button", buf.String())
+
+		_, err = io.WriteString(w, resp.Encode())
+		return err
+	}(w, issue)
+	if err != nil {
+		log.Println("t.ExecuteTemplate:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func postCommentHandler(w http.ResponseWriter, req *http.Request) {
+	ctx := context.TODO()
+	vars := mux.Vars(req)
+
+	comment := issues.Comment{
+		Body: req.PostForm.Get("value"),
+	}
+
+	comment, err := is.CreateComment(ctx, issues.RepoSpec{Owner: vars["owner"], Repo: vars["repo"]}, uint64(mustAtoi(vars["id"])), comment)
+	if err != nil {
+		log.Println("is.CreateComment:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = t.ExecuteTemplate(w, "comment", comment)
+	if err != nil {
+		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -232,13 +318,18 @@ func main() {
 		log.Fatalln("loadTemplates:", err)
 	}
 
-	http.Handle("/favicon.ico", http.NotFoundHandler())
 	http.HandleFunc("/pages/", mainHandler)
 	r := mux.NewRouter()
-	r.HandleFunc("/github.com/{owner}/{repo}/issues", issuesHandler)
-	r.HandleFunc("/github.com/{owner}/{repo}/issues/{id:[0-9]+}", issueHandler)
+	r.HandleFunc("/github.com/{owner}/{repo}/issues", issuesHandler).Methods("GET")
+	r.HandleFunc("/github.com/{owner}/{repo}/issues/{id:[0-9]+}", issueHandler).Methods("GET")
+	r.HandleFunc("/github.com/{owner}/{repo}/issues/{id:[0-9]+}/comment", postCommentHandler).Methods("POST")
+	r.HandleFunc("/github.com/{owner}/{repo}/issues/{id:[0-9]+}/edit", postEditIssueHandler).Methods("POST")
+	r.HandleFunc("/new", createIssueHandler).Methods("GET")
+	r.HandleFunc("/new", postCreateIssueHandler).Methods("POST")
 	http.Handle("/", r)
 	http.Handle("/assets/", gzip_file_server.New(assets))
+	http.HandleFunc("/debug", debugHandler)
+	r.HandleFunc("/github.com/{owner}/{repo}/issues/{id:[0-9]+}/debug", debugIssueHandler).Methods("GET")
 
 	printServingAt(*httpFlag)
 	err = http.ListenAndServe(*httpFlag, nil)

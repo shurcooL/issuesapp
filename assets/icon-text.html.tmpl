@@ -1,8 +1,6 @@
 <html>
 	<head>
-		<link href="/assets/style.css" rel="stylesheet" type="text/css" />
-		<script src="/assets/script/script.js" type="text/javascript"></script>
-		<link href="//cdnjs.cloudflare.com/ajax/libs/octicons/2.1.2/octicons.css" media="all" rel="stylesheet" type="text/css" />
+		{{template "head" .}}
 	</head>
 	<body>
 		<div>{{template "issue-badge" "open"}}</div>
@@ -26,4 +24,22 @@
 
 {{define "closed-badge"}}
 <span style="display: inline-block; padding: 4px 6px 4px 6px; margin: 4px; color: #fff; background-color: #bd2c00;"><span style="margin-right: 6px;" class="octicon octicon-issue-closed"></span>Closed</span>
+{{end}}
+
+{{define "toggle-button"}}
+	{{if eq . "open"}}
+		{{template "close-button"}}
+	{{else if eq . "closed"}}
+		{{template "reopen-button"}}
+	{{else}}
+		{{.}}
+	{{end}}
+{{end}}
+
+{{define "close-button"}}
+<button id="issue-toggle-button" class="btn btn-small" onclick="ToggleIssueStatus('closed');">Close issue</button>
+{{end}}
+
+{{define "reopen-button"}}
+<button id="issue-toggle-button" class="btn btn-small" onclick="ToggleIssueStatus('open');">Reopen issue</button>
 {{end}}

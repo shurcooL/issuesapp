@@ -1,21 +1,22 @@
 <html>
 	<head>
-		<link href="/assets/style.css" rel="stylesheet" type="text/css" />
-		<script src="/assets/script/script.js" type="text/javascript"></script>
-		<link href="//cdnjs.cloudflare.com/ajax/libs/octicons/2.1.2/octicons.css" media="all" rel="stylesheet" type="text/css" />
+		{{template "head" .}}
 	</head>
 	<body>
-		<h2>post-comment.html</h2>
-		{{template "post-comment" .}}
+		<div style="background-color: lightgray;">content</div>
+		{{template "new-comment" .}}
+		<div style="background-color: lightgray;">content</div>
 	</body>
 </html>
 
-{{define "post-comment"}}
-<div style="display: flex;">
-	<a href="{{.User.HTMLURL}}" target="_blank">
-		<img class="comment-avatar" alt="@{{.User.Login}}" width="48" height="48" src="{{.User.AvatarURL}}&amp;s=96">
-	</a>
-	<div class="list-entry" style="flex-grow: 1;">
+{{define "new-comment"}}
+<div style="display: flex;" class="list-entry">
+	<div>
+		<a href="{{.CurrentUser.HTMLURL}}" target="_blank">
+			<img class="comment-avatar" width="48" height="48" src="{{.CurrentUser.AvatarURL}}">
+		</a>
+	</div>
+	<div class="list-entry-border" style="flex-grow: 1;">
 		<div class="list-entry-header tabs" style="display: flex;">
 			<span style="flex-grow: 1; font-size: 14px;">
 				<a id="write-tab-link" class="black tab-link active" href="javascript:SwitchWriteTab();">Write</a>
@@ -26,7 +27,7 @@
 		<div class="list-entry-body">
 			<textarea id="comment-editor" placeholder="Leave a comment"></textarea>
 			<div id="comment-preview" class="markdown-body" style="padding: 10px; min-height: 100px; display: none;"></div>
-			<div style="text-align: right; margin-top: 10px;"><button>Comment</button></div>
+			<div style="text-align: right; margin-top: 10px;">{{template "toggle-button" (printf "open")}}<button class="btn btn-success btn-small" onclick="PostComment();">Comment</button></div>
 		</div>
 	</div>
 </div>
