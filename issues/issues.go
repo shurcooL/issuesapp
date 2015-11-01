@@ -27,8 +27,7 @@ type Service interface {
 
 	Edit(ctx context.Context, repo RepoSpec, id uint64, req IssueRequest) (Issue, error)
 
-	// TODO: Play things.
-	Comment() Comment
+	// TODO: This doesn't belong here, does it?
 	CurrentUser() User
 }
 
