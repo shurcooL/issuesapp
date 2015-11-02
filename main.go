@@ -144,22 +144,6 @@ var is issues.Service = ghissues.NewService(gh)
 
 var gh = github.NewClient(oauth2.NewClient(oauth2.NoContext, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ""})))
 
-func (s state) Comment() issues.Comment {
-	return issues.Comment{
-		User:      is.CurrentUser(),
-		CreatedAt: time.Unix(1443244474, 0).UTC(),
-		Body:      "I've resolved this in 4387efb. Please re-open or leave a comment if there's still room for improvement here.",
-	}
-}
-
-func (s state) Event() issues.Event {
-	return issues.Event{
-		Actor:     is.CurrentUser(),
-		CreatedAt: time.Now(),
-		Type:      issues.Closed,
-	}
-}
-
 // Apparently needed for "new-comment" component, etc.
 func (state) CurrentUser() issues.User {
 	return is.CurrentUser()
