@@ -22,8 +22,15 @@ type service struct {
 	cl *github.Client
 }
 
-func (s service) List(_ context.Context, repo issues.RepoSpec, opt interface{}) ([]issues.Issue, error) {
-	ghIssuesAndPRs, _, err := s.cl.Issues.ListByRepo(repo.Owner, repo.Repo, nil)
+func (s service) List(_ context.Context, repo issues.RepoSpec, opt issues.IssueListOptions) ([]issues.Issue, error) {
+	ghOpt := github.IssueListByRepoOptions{}
+	switch opt.State {
+	case issues.OpenState:
+		// Do nothing, this is the GitHub default.
+	case issues.ClosedState:
+		ghOpt.State = "closed"
+	}
+	ghIssuesAndPRs, _, err := s.cl.Issues.ListByRepo(repo.Owner, repo.Repo, &ghOpt)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +76,11 @@ func (s service) Count(_ context.Context, repo issues.RepoSpec, opt issues.Issue
 		if err != nil {
 			return 0, err
 		}
-		count = uint64(len(ghIssuesAndPRs) + ghIssuesAndPRsResp.LastPage - ghIssuesAndPRsResp.FirstPage)
+		if ghIssuesAndPRsResp.LastPage != 0 {
+			count = uint64(ghIssuesAndPRsResp.LastPage)
+		} else {
+			count = uint64(len(ghIssuesAndPRs))
+		}
 	}
 
 	// Subtract PRs.
@@ -85,7 +96,11 @@ func (s service) Count(_ context.Context, repo issues.RepoSpec, opt issues.Issue
 		if err != nil {
 			return 0, err
 		}
-		count -= uint64(len(ghPRs) + ghPRsResp.LastPage - ghPRsResp.FirstPage)
+		if ghPRsResp.LastPage != 0 {
+			count -= uint64(ghPRsResp.LastPage)
+		} else {
+			count -= uint64(len(ghPRs))
+		}
 	}
 
 	return count, nil

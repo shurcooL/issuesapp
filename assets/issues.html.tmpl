@@ -20,14 +20,15 @@
 
 {{define "issues"}}
 <div class="list-entry list-entry-border">
-	<div class="list-entry-header">
-		<span><span style="margin-right: 4px;" class="octicon octicon-issue-opened"></span>{{.OpenCount}} Open</span>
-		<span style="margin-left: 8px;"><span  style="margin-right: 4px;" class="octicon octicon-check"></span>{{.ClosedCount}} Closed</span>
-	</div>
+	{{template "issues-nav" .}}
 	{{range .Issues}}
 	<div class="list-entry-body multilist-entry">
 		<div style="display: flex;">
-			<span style="margin-right: 6px; color: #6cc644;" class="octicon octicon-issue-opened"></span>
+			{{if eq .State "open"}}
+				<span style="margin-right: 6px; color: #6cc644;" class="octicon octicon-issue-opened"></span>
+			{{else if eq .State "closed"}}
+				<span style="margin-right: 6px; color: #bd2c00;" class="octicon octicon-issue-closed"></span>
+			{{end}}
 			<div style="flex-grow: 1;">
 				<div><a class="black" href="issues/{{.ID}}"><strong>{{.Title}}</strong></a></div>
 				<div class="gray tiny">#{{.ID}} opened {{template "time" .CreatedAt}} by {{.User.Login}}</div>

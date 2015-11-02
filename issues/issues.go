@@ -14,7 +14,7 @@ type RepoSpec struct {
 }
 
 type Service interface {
-	List(ctx context.Context, repo RepoSpec, opt interface{}) ([]Issue, error)
+	List(ctx context.Context, repo RepoSpec, opt IssueListOptions) ([]Issue, error)
 	Count(ctx context.Context, repo RepoSpec, opt IssueListOptions) (uint64, error)
 
 	Get(ctx context.Context, repo RepoSpec, id uint64) (Issue, error)

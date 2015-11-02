@@ -58,6 +58,7 @@ type state struct {
 
 type BaseState struct {
 	ctx  context.Context
+	req  *http.Request
 	vars map[string]string
 
 	common.State
@@ -67,6 +68,7 @@ func baseState(req *http.Request) BaseState {
 	ctx := context.TODO()
 	return BaseState{
 		ctx:  ctx,
+		req:  req,
 		vars: mux.Vars(req),
 
 		State: common.State{
@@ -77,8 +79,16 @@ func baseState(req *http.Request) BaseState {
 	}
 }
 
+func (s state) Tabs() (template.HTML, error) {
+	return tabs(&s, s.ReqPath, s.req.URL.RawQuery)
+}
+
 func (s state) Issues() ([]issues.Issue, error) {
-	return is.List(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, nil)
+	var opt issues.IssueListOptions
+	if selectedTab := s.req.URL.Query().Get(queryKeyState); selectedTab == string(issues.ClosedState) {
+		opt.State = issues.ClosedState
+	}
+	return is.List(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, opt)
 }
 
 func (s state) OpenCount() (uint64, error) {
