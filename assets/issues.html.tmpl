@@ -3,7 +3,7 @@
 		{{template "head" .}}
 	</head>
 	<body>
-		{{template "issues" .Issues}}
+		{{template "issues" .}}
 	</body>
 </html>
 
@@ -21,9 +21,10 @@
 {{define "issues"}}
 <div class="list-entry list-entry-border">
 	<div class="list-entry-header">
-		{{len $}} Open
+		<span><span style="margin-right: 4px;" class="octicon octicon-issue-opened"></span>{{.OpenCount}} Open</span>
+		<span style="margin-left: 8px;"><span  style="margin-right: 4px;" class="octicon octicon-check"></span>{{.ClosedCount}} Closed</span>
 	</div>
-	{{range .}}
+	{{range .Issues}}
 	<div class="list-entry-body multilist-entry">
 		<div style="display: flex;">
 			<span style="margin-right: 6px; color: #6cc644;" class="octicon octicon-issue-opened"></span>

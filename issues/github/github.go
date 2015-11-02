@@ -22,7 +22,7 @@ type service struct {
 	cl *github.Client
 }
 
-func (s service) ListByRepo(_ context.Context, repo issues.RepoSpec, opt interface{}) ([]issues.Issue, error) {
+func (s service) List(_ context.Context, repo issues.RepoSpec, opt interface{}) ([]issues.Issue, error) {
 	ghIssuesAndPRs, _, err := s.cl.Issues.ListByRepo(repo.Owner, repo.Repo, nil)
 	if err != nil {
 		return nil, err
@@ -51,6 +51,44 @@ func (s service) ListByRepo(_ context.Context, repo issues.RepoSpec, opt interfa
 	}
 
 	return is, nil
+}
+
+func (s service) Count(_ context.Context, repo issues.RepoSpec, opt issues.IssueListOptions) (uint64, error) {
+	var count uint64
+
+	// Count Issues and PRs (since there appears to be no way to count just issues in GitHub API).
+	{
+		ghOpt := github.IssueListByRepoOptions{ListOptions: github.ListOptions{PerPage: 1}}
+		switch opt.State {
+		case issues.OpenState:
+			// Do nothing, this is the GitHub default.
+		case issues.ClosedState:
+			ghOpt.State = "closed"
+		}
+		ghIssuesAndPRs, ghIssuesAndPRsResp, err := s.cl.Issues.ListByRepo(repo.Owner, repo.Repo, &ghOpt)
+		if err != nil {
+			return 0, err
+		}
+		count = uint64(len(ghIssuesAndPRs) + ghIssuesAndPRsResp.LastPage - ghIssuesAndPRsResp.FirstPage)
+	}
+
+	// Subtract PRs.
+	{
+		ghOpt := github.PullRequestListOptions{ListOptions: github.ListOptions{PerPage: 1}}
+		switch opt.State {
+		case issues.OpenState:
+			// Do nothing, this is the GitHub default.
+		case issues.ClosedState:
+			ghOpt.State = "closed"
+		}
+		ghPRs, ghPRsResp, err := s.cl.PullRequests.List(repo.Owner, repo.Repo, &ghOpt)
+		if err != nil {
+			return 0, err
+		}
+		count -= uint64(len(ghPRs) + ghPRsResp.LastPage - ghPRsResp.FirstPage)
+	}
+
+	return count, nil
 }
 
 func (s service) Get(_ context.Context, repo issues.RepoSpec, id uint64) (issues.Issue, error) {
@@ -192,10 +230,15 @@ func (s service) Edit(_ context.Context, repo issues.RepoSpec, id uint64, ir iss
 		return issues.Issue{}, err
 	}
 
-	issue, _, err := s.cl.Issues.Edit(repo.Owner, repo.Repo, int(id), &github.IssueRequest{
-		State: ir.State,
+	ghIR := github.IssueRequest{
 		Title: ir.Title,
-	})
+	}
+	if ir.State != nil {
+		state := string(*ir.State)
+		ghIR.State = &state
+	}
+
+	issue, _, err := s.cl.Issues.Edit(repo.Owner, repo.Repo, int(id), &ghIR)
 	if err != nil {
 		return issues.Issue{}, err
 	}

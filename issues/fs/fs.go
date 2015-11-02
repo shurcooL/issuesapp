@@ -31,7 +31,7 @@ type service struct {
 	issues.Service
 }
 
-func (s service) ListByRepo(ctx context.Context, repo issues.RepoSpec, opt interface{}) ([]issues.Issue, error) {
+func (s service) List(ctx context.Context, repo issues.RepoSpec, opt interface{}) ([]issues.Issue, error) {
 	sg := sourcegraph.NewClientFromContext(ctx)
 
 	var is []issues.Issue

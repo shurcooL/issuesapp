@@ -54,16 +54,16 @@ div.multilist-entry:not(:nth-child(0n+2)) {
 	border-top-width: 1px;
 }
 
-.markdown-body>*:first-child {
+.markdown-body > *:first-child {
 	margin-top: 0;
 }
-.markdown-body>*:last-child {
+.markdown-body > *:last-child {
 	margin-bottom: 0;
 }
-.markdown-body blockquote>*:first-child {
+.markdown-body blockquote > *:first-child {
 	margin-top: 0;
 }
-.markdown-body blockquote>*:last-child {
+.markdown-body blockquote > *:last-child {
 	margin-bottom: 0;
 }
 .markdown-body blockquote {

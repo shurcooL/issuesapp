@@ -78,7 +78,15 @@ func baseState(req *http.Request) BaseState {
 }
 
 func (s state) Issues() ([]issues.Issue, error) {
-	return is.ListByRepo(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, nil)
+	return is.List(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, nil)
+}
+
+func (s state) OpenCount() (uint64, error) {
+	return is.Count(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, issues.IssueListOptions{State: issues.OpenState})
+}
+
+func (s state) ClosedCount() (uint64, error) {
+	return is.Count(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, issues.IssueListOptions{State: issues.ClosedState})
 }
 
 func mustAtoi(s string) int {
