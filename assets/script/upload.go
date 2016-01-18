@@ -1,9 +1,10 @@
+// +build js
+
 package main
 
 import (
 	"bytes"
-	"fmt"
-	"io/ioutil"
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -11,73 +12,48 @@ import (
 	"honnef.co/go/js/dom"
 )
 
-const (
-	//host = "http://virtivia.com:27080"
-	host = "http://localhost:27080"
-)
+func PasteHandler(e dom.Event) {
+	ce := e.(*dom.ClipboardEvent)
 
-func init() {
-	document.AddEventListener("DOMContentLoaded", false, func(_ dom.Event) { setup2() })
-}
-
-func setup2() {
-	textArea, ok := document.GetElementByID("comment-editor").(*dom.HTMLTextAreaElement)
-	if !ok {
+	items := ce.Get("clipboardData").Get("items")
+	if items.Length() == 0 {
 		return
 	}
+	item := items.Index(0)
+	if item.Get("kind").String() != "file" {
+		return
+	}
+	if item.Get("type").String() != "image/png" {
+		return
+	}
+	file := item.Call("getAsFile")
 
-	textArea.AddEventListener("paste", false, func(e dom.Event) {
-		ce := e.(*dom.ClipboardEvent)
+	go func() {
+		b := blobToBytes(file)
 
-		items := ce.Get("clipboardData").Get("items")
-		if items.Length() == 0 {
+		resp, err := http.Post("/usercontent", "image/png", bytes.NewReader(b))
+		if err != nil {
+			log.Println(err)
 			return
 		}
-		item := items.Index(0)
-		if item.Get("kind").String() != "file" {
+		defer resp.Body.Close()
+		var upload struct {
+			Name  string
+			Error string
+		}
+		err = json.NewDecoder(resp.Body).Decode(&upload)
+		if err != nil {
+			log.Println(err)
 			return
 		}
-		if item.Get("type").String() != "image/png" {
+		if upload.Error != "" {
+			log.Println(upload.Error)
 			return
 		}
-		file := item.Call("getAsFile")
 
-		go func() {
-			resp, err := http.Get(host + "/api/getfilename?ext=" + "png")
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			defer resp.Body.Close()
-			filename, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-
-			url := host + "/" + string(filename)
-			fmt.Println(url)
-			insertText(textArea, "![Image]("+url+")\n")
-
-			b := blobToBytes(file)
-			fmt.Println("file size:", len(b))
-
-			req, err := http.NewRequest("PUT", url, bytes.NewReader(b))
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			req.Header.Set("Content-Type", "application/octet-stream")
-			resp, err = http.DefaultClient.Do(req)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			_ = resp.Body.Close()
-
-			fmt.Println("done")
-		}()
-	})
+		url := "/usercontent/" + upload.Name
+		insertText(ce.Target().(*dom.HTMLTextAreaElement), "![Image]("+url+")\n")
+	}()
 }
 
 func insertText(t *dom.HTMLTextAreaElement, inserted string) {

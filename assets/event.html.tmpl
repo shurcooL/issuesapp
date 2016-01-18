@@ -12,10 +12,10 @@
 
 {{define "event"}}
 <div class="list-entry event event-{{.Type}}">
-	<span class="octicon {{(event .).Octicon}} event-icon"></span>
+	<span class="octicon {{.Octicon}} event-icon"></span>
 	<div class="event-header">
 		<img class="inline-avatar" width="16" height="16" src="{{.Actor.AvatarURL}}">
-		<a class="black" href="{{.Actor.HTMLURL}}" target="_blank"><strong>{{.Actor.Login}}</strong></a> {{(event .).Text}} {{template "time" .CreatedAt}}
+		{{template "user" .Actor}} {{.Text}} {{template "time" .CreatedAt}}
 	</div>
 </div>
 {{end}}

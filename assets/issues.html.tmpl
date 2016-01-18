@@ -1,16 +1,23 @@
 <html>
 	<head>
-		{{template "head" .}}
+		{{template "scriptless-head" .}}
 	</head>
 	<body>
+		{{if .CurrentUser}}
+			<div style="text-align: right;"><button class="btn btn-success btn-small" onclick="window.location = '{{.BaseURI}}/new';">Create Issue</button></div>
+		{{end}}
 		{{template "issues" .}}
 	</body>
 </html>
 
-{{define "head"}}
-	<link href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha/css/bootstrap.css" media="all" rel="stylesheet" type="text/css" />
-	<link href="//cdnjs.cloudflare.com/ajax/libs/octicons/3.1.0/octicons.css" media="all" rel="stylesheet" type="text/css" />
+{{/* HACK: This is a temporary experiment. */}}
+{{define "scriptless-head"}}
+	{{.HeadPre}}
 	<link href="{{.BaseURI}}/assets/style.css" rel="stylesheet" type="text/css" />
+{{end}}
+
+{{define "head"}}
+	{{template "scriptless-head" .}}
 	<script type="text/javascript">
 		var State = {{.BaseState | jsonfmt}};
 		{{/*var State = {{.BaseState}};*/}}
@@ -21,20 +28,19 @@
 {{define "issues"}}
 <div class="list-entry list-entry-border">
 	{{template "issues-nav" .}}
-	{{range .Issues}}
+	{{with .Issues}}{{range .}}
 	<div class="list-entry-body multilist-entry">
 		<div style="display: flex;">
-			{{if eq .State "open"}}
-				<span style="margin-right: 6px; color: #6cc644;" class="octicon octicon-issue-opened"></span>
-			{{else if eq .State "closed"}}
-				<span style="margin-right: 6px; color: #bd2c00;" class="octicon octicon-issue-closed"></span>
-			{{end}}
+			{{template "issue-icon" .State}}
 			<div style="flex-grow: 1;">
-				<div><a class="black" href="issues/{{.ID}}"><strong>{{.Title}}</strong></a></div>
+				<div><a class="black" href="{{$.BaseURI}}/{{.ID}}"><strong>{{.Title}}</strong></a></div>
 				<div class="gray tiny">#{{.ID}} opened {{template "time" .CreatedAt}} by {{.User.Login}}</div>
 			</div>
+			<span title="{{.Replies}} replies" class="tiny {{if .Replies}}gray{{else}}lightgray{{end}}"><span class="octicon octicon-comment"></span> {{.Replies}}</span>
 		</div>
 	</div>
+	{{end}}{{else}}
+		<div style="text-align: center; margin-top: 80px; margin-bottom: 80px;">There aren't any {{.Tab}} issues.</div>
 	{{end}}
 </div>
 {{end}}

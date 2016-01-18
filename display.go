@@ -1,15 +1,16 @@
-package main
+package issuesapp
 
 import (
 	"fmt"
 	"html/template"
 	"time"
 
-	"github.com/gopherjs/gopherpen/issues"
 	"github.com/shurcooL/htmlg"
+	"src.sourcegraph.com/apps/tracker/issues"
 )
 
-// issueItem represents an event item for display purposes.
+// issueItem represents an issue item for display purposes.
+// It can be one of issues.Comment, event.
 type issueItem struct {
 	IssueItem
 }
@@ -20,10 +21,10 @@ func (i issueItem) TemplateName() string {
 	switch i.IssueItem.(type) {
 	case issues.Comment:
 		return "comment"
-	case issues.Event:
+	case event:
 		return "event"
 	default:
-		panic("unknown item type")
+		panic(fmt.Errorf("unknown item type %T", i.IssueItem))
 	}
 }
 
@@ -31,10 +32,10 @@ func (i issueItem) CreatedAt() time.Time {
 	switch i := i.IssueItem.(type) {
 	case issues.Comment:
 		return i.CreatedAt
-	case issues.Event:
+	case event:
 		return i.CreatedAt
 	default:
-		panic("unknown item type")
+		panic(fmt.Errorf("unknown item type %T", i))
 	}
 }
 
@@ -45,7 +46,7 @@ func (s byCreatedAt) Len() int           { return len(s) }
 func (s byCreatedAt) Less(i, j int) bool { return s[i].CreatedAt().Before(s[j].CreatedAt()) }
 func (s byCreatedAt) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
-// event is a issues.Event wrapper with display augmentations.
+// event is an issues.Event wrapper with display augmentations.
 type event struct {
 	issues.Event
 }

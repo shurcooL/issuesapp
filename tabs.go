@@ -1,25 +1,38 @@
-package main
+package issuesapp
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"net/url"
 
-	"github.com/gopherjs/gopherpen/issues"
 	"github.com/shurcooL/htmlg"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
+	"src.sourcegraph.com/apps/tracker/issues"
 )
 
 // TODO: Factor out somehow...
 var tabsTmpl = template.Must(template.New("").Parse(`
 {{define "open-issue-count"}}<span><span style="margin-right: 4px;" class="octicon octicon-issue-opened"></span>{{.OpenCount}} Open</span>{{end}}
-{{define "closed-issue-count"}}<span style="margin-left: 12px;"><span  style="margin-right: 4px;" class="octicon octicon-check"></span>{{.ClosedCount}} Closed</span>{{end}}
+{{define "closed-issue-count"}}<span style="margin-left: 12px;"><span style="margin-right: 4px;" class="octicon octicon-check"></span>{{.ClosedCount}} Closed</span>{{end}}
 `))
 
 const (
 	queryKeyState = "state"
 )
+
+// TODO: Reorganize and deduplicate.
+func tab(query url.Values) (issues.State, error) {
+	switch query.Get(queryKeyState) {
+	case "":
+		return issues.OpenState, nil
+	case string(issues.ClosedState):
+		return issues.ClosedState, nil
+	default:
+		return "", fmt.Errorf("unsupported queryKeyState value: %q", query.Get(queryKeyState))
+	}
+}
 
 // tabs renders the html for <nav> element with tab header links.
 func tabs(s *state, path string, rawQuery string) (template.HTML, error) {

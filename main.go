@@ -1,38 +1,83 @@
-package main
+package issuesapp
 
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"path"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/google/go-github/github"
-	"github.com/gopherjs/gopherpen/common"
-	"github.com/gopherjs/gopherpen/issues"
 	"github.com/gorilla/mux"
 	"github.com/shurcooL/github_flavored_markdown"
 	"github.com/shurcooL/go-goon"
 	"github.com/shurcooL/go/gzip_file_server"
-	"github.com/shurcooL/go/vfs/httpfs/html/vfstemplate"
+	"github.com/shurcooL/httpfs/html/vfstemplate"
+	"github.com/shurcooL/issuesapp/common"
 	"golang.org/x/net/context"
-	"golang.org/x/oauth2"
-
-	ghissues "github.com/gopherjs/gopherpen/issues/github"
-	//fsissues "github.com/gopherjs/gopherpen/issues/fs"
+	"src.sourcegraph.com/apps/tracker/issues"
 )
 
-var httpFlag = flag.String("http", ":8080", "Listen for HTTP connections on this address.")
+type Options struct {
+	Context   func(req *http.Request) context.Context
+	RepoSpec  func(req *http.Request) issues.RepoSpec
+	BaseURI   func(req *http.Request) string
+	CSRFToken func(req *http.Request) string
+	Verbatim  func(w http.ResponseWriter)
+	HeadPre   template.HTML
+
+	// TODO.
+	BaseState func(req *http.Request) BaseState
+}
+
+type handler struct {
+	http.Handler
+
+	Options
+}
+
+// New returns an issues app http.Handler using given service and options.
+func New(service issues.Service, opt Options) http.Handler {
+	err := loadTemplates()
+	if err != nil {
+		log.Fatalln("loadTemplates:", err)
+	}
+
+	// TODO: Move into handler?
+	is = service
+
+	h := http.NewServeMux()
+	h.HandleFunc("/mock/", mockHandler)
+	r := mux.NewRouter()
+	// TODO: Make redirection work.
+	//r.StrictSlash(true) // THINK: Can't use this due to redirect not taking baseURI into account.
+	r.HandleFunc("/", issuesHandler).Methods("GET")
+	r.HandleFunc("/{id:[0-9]+}", issueHandler).Methods("GET")
+	r.HandleFunc("/{id:[0-9]+}/edit", postEditIssueHandler).Methods("POST")
+	r.HandleFunc("/{id:[0-9]+}/comment", postCommentHandler).Methods("POST")
+	r.HandleFunc("/{id:[0-9]+}/comment/{commentID:[0-9]+}", postEditCommentHandler).Methods("POST")
+	r.HandleFunc("/new", createIssueHandler).Methods("GET")
+	r.HandleFunc("/new", postCreateIssueHandler).Methods("POST")
+	h.Handle("/", r)
+	assetsFileServer := gzip_file_server.New(Assets)
+	h.Handle("/assets/", assetsFileServer)
+	h.HandleFunc("/debug", debugHandler)
+
+	globalHandler = &handler{
+		Options: opt,
+		Handler: h,
+	}
+	return globalHandler
+}
+
+// TODO: Refactor to avoid global.
+var globalHandler *handler
 
 var t *template.Template
 
@@ -40,15 +85,18 @@ func loadTemplates() error {
 	var err error
 	t = template.New("").Funcs(template.FuncMap{
 		"dump": func(v interface{}) string { return goon.Sdump(v) },
+		"json": func(v interface{}) (string, error) {
+			b, err := json.Marshal(v)
+			return string(b), err
+		},
 		"jsonfmt": func(v interface{}) (string, error) {
 			b, err := json.MarshalIndent(v, "", "\t")
 			return string(b), err
 		},
 		"reltime": humanize.Time,
 		"gfm":     func(s string) template.HTML { return template.HTML(github_flavored_markdown.Markdown([]byte(s))) },
-		"event":   func(e issues.Event) event { return event{e} },
 	})
-	t, err = vfstemplate.ParseGlob(assets, t, "/assets/*.tmpl")
+	t, err = vfstemplate.ParseGlob(Assets, t, "/assets/*.tmpl")
 	return err
 }
 
@@ -61,42 +109,54 @@ type BaseState struct {
 	req  *http.Request
 	vars map[string]string
 
+	repoSpec issues.RepoSpec
+	HeadPre  template.HTML
+
 	common.State
 }
 
-func baseState(req *http.Request) BaseState {
-	ctx := context.TODO()
-	return BaseState{
-		ctx:  ctx,
-		req:  req,
-		vars: mux.Vars(req),
+func baseState(req *http.Request) (BaseState, error) {
+	b := globalHandler.BaseState(req)
+	b.ctx = globalHandler.Context(req)
+	b.req = req
+	b.vars = mux.Vars(req)
+	b.repoSpec = globalHandler.RepoSpec(req)
+	b.HeadPre = globalHandler.HeadPre
 
-		State: common.State{
-			//BaseURI:   pctx.BaseURI(ctx),
-			ReqPath: req.URL.Path,
-			//CSRFToken: pctx.CSRFToken(ctx),
-		},
+	if u, err := is.CurrentUser(b.ctx); err != nil {
+		return BaseState{}, err
+	} else {
+		b.CurrentUser = u
 	}
+
+	return b, nil
+}
+
+func (s state) Tab() (issues.State, error) {
+	return tab(s.req.URL.Query())
 }
 
 func (s state) Tabs() (template.HTML, error) {
-	return tabs(&s, s.ReqPath, s.req.URL.RawQuery)
+	return tabs(&s, s.BaseURI+s.ReqPath, s.req.URL.RawQuery)
 }
 
 func (s state) Issues() ([]issues.Issue, error) {
 	var opt issues.IssueListOptions
-	if selectedTab := s.req.URL.Query().Get(queryKeyState); selectedTab == string(issues.ClosedState) {
-		opt.State = issues.ClosedState
+	switch selectedTab := s.req.URL.Query().Get(queryKeyState); selectedTab {
+	case "": // Default. TODO: Make this cleaner.
+		opt.State = issues.StateFilter(issues.OpenState)
+	case string(issues.ClosedState):
+		opt.State = issues.StateFilter(issues.ClosedState)
 	}
-	return is.List(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, opt)
+	return is.List(s.ctx, s.repoSpec, opt)
 }
 
 func (s state) OpenCount() (uint64, error) {
-	return is.Count(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, issues.IssueListOptions{State: issues.OpenState})
+	return is.Count(s.ctx, s.repoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
 }
 
 func (s state) ClosedCount() (uint64, error) {
-	return is.Count(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, issues.IssueListOptions{State: issues.ClosedState})
+	return is.Count(s.ctx, s.repoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
 }
 
 func mustAtoi(s string) int {
@@ -107,24 +167,16 @@ func mustAtoi(s string) int {
 	return i
 }
 
-func (s state) Issue() (interface{}, error) {
-	return is.Get(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, uint64(mustAtoi(s.vars["id"])))
+func (s state) Issue() (issues.Issue, error) {
+	return is.Get(s.ctx, s.repoSpec, uint64(mustAtoi(s.vars["id"])))
 }
 
-func (s state) Comments() (interface{}, error) {
-	return is.ListComments(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, uint64(mustAtoi(s.vars["id"])), nil)
-}
-
-func (s state) Events() (interface{}, error) {
-	return is.ListEvents(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, uint64(mustAtoi(s.vars["id"])), nil)
-}
-
-func (s state) Items() (interface{}, error) {
-	cs, err := is.ListComments(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, uint64(mustAtoi(s.vars["id"])), nil)
+func (s state) Items() ([]issueItem, error) {
+	cs, err := is.ListComments(s.ctx, s.repoSpec, uint64(mustAtoi(s.vars["id"])), nil)
 	if err != nil {
 		return nil, err
 	}
-	es, err := is.ListEvents(s.ctx, issues.RepoSpec{Owner: s.vars["owner"], Repo: s.vars["repo"]}, uint64(mustAtoi(s.vars["id"])), nil)
+	es, err := is.ListEvents(s.ctx, s.repoSpec, uint64(mustAtoi(s.vars["id"])), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -132,41 +184,14 @@ func (s state) Items() (interface{}, error) {
 	for _, comment := range cs {
 		items = append(items, issueItem{comment})
 	}
-	for _, event := range es {
-		items = append(items, issueItem{event})
+	for _, e := range es {
+		items = append(items, issueItem{event{e}})
 	}
 	sort.Sort(byCreatedAt(items))
 	return items, nil
 }
 
-//var is issues.Service = fsissues.NewService()
-var is issues.Service = ghissues.NewService(gh)
-
-var gh = github.NewClient(oauth2.NewClient(oauth2.NoContext, oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ""})))
-
-// Apparently needed for "new-comment" component, etc.
-func (state) CurrentUser() issues.User {
-	return is.CurrentUser()
-}
-
-func mainHandler(w http.ResponseWriter, req *http.Request) {
-	if err := loadTemplates(); err != nil {
-		log.Println("loadTemplates:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	tmpl := path.Base(req.URL.Path)
-	state := state{
-		BaseState: baseState(req),
-	}
-	err := t.ExecuteTemplate(w, tmpl+".tmpl", &state)
-	if err != nil {
-		log.Println("t.ExecuteTemplate:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
+var is issues.Service
 
 func issuesHandler(w http.ResponseWriter, req *http.Request) {
 	if err := loadTemplates(); err != nil {
@@ -175,10 +200,16 @@ func issuesHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	state := state{
-		BaseState: baseState(req),
+	baseState, err := baseState(req)
+	if err != nil {
+		log.Println("baseState:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	err := t.ExecuteTemplate(w, "issues.html.tmpl", &state)
+	state := state{
+		BaseState: baseState,
+	}
+	err = t.ExecuteTemplate(w, "issues.html.tmpl", &state)
 	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -193,10 +224,16 @@ func issueHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	state := state{
-		BaseState: baseState(req),
+	baseState, err := baseState(req)
+	if err != nil {
+		log.Println("baseState:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	err := t.ExecuteTemplate(w, "issue.html.tmpl", &state)
+	state := state{
+		BaseState: baseState,
+	}
+	err = t.ExecuteTemplate(w, "issue.html.tmpl", &state)
 	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -205,28 +242,19 @@ func issueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func debugHandler(w http.ResponseWriter, req *http.Request) {
+	if globalHandler.Verbatim != nil {
+		globalHandler.Verbatim(w)
+	}
+
 	fmt.Println("debugHandler:", req.URL.Path)
 
 	/*ctx := putil.Context(req)
 	if repoRevSpec, ok := pctx.RepoRevSpec(ctx); ok {
-		_ = repoRevSpec
+		goon.DumpExpr(issues.RepoSpec{URI: repoRevSpec.URI})
 	}
 	goon.DumpExpr(pctx.RepoRevSpec(ctx))*/
 
 	//io.WriteString(w, req.PostForm.Get("value"))
-}
-func debugIssueHandler(w http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-
-	ie, _, err := gh.Issues.ListIssueEvents(vars["owner"], vars["repo"], mustAtoi(vars["id"]), nil)
-	if err != nil {
-		log.Println("ListIssueEvents:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain")
-	io.WriteString(w, goon.SdumpExpr(ie))
 }
 
 func createIssueHandler(w http.ResponseWriter, req *http.Request) {
@@ -236,10 +264,20 @@ func createIssueHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	state := state{
-		BaseState: baseState(req),
+	baseState, err := baseState(req)
+	if err != nil {
+		log.Println("baseState:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	err := t.ExecuteTemplate(w, "new-issue.html.tmpl", &state)
+	if baseState.CurrentUser == nil {
+		http.Error(w, "this page requires an authenticated user", http.StatusUnauthorized)
+		return
+	}
+	state := state{
+		BaseState: baseState,
+	}
+	err = t.ExecuteTemplate(w, "new-issue.html.tmpl", &state)
 	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -248,52 +286,56 @@ func createIssueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
-	if err := req.ParseForm(); err != nil {
-		log.Println("req.ParseForm:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if globalHandler.Verbatim != nil {
+		globalHandler.Verbatim(w)
+	}
+
+	ctx := globalHandler.Context(req)
+	baseURI := globalHandler.BaseURI(req)
+	repoSpec := globalHandler.RepoSpec(req)
+
+	var issue issues.Issue
+	err := json.NewDecoder(req.Body).Decode(&issue)
+	if err != nil {
+		log.Println("json.Decode:", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	ctx := context.TODO()
-	vars := mux.Vars(req)
-
-	issue := issues.Issue{
-		Title: req.PostForm.Get("title"),
-		Comment: issues.Comment{
-			Body: req.PostForm.Get("body"),
-		},
-	}
-
-	issue, err := is.Create(ctx, issues.RepoSpec{Owner: vars["owner"], Repo: vars["repo"]}, issue)
+	issue, err = is.Create(ctx, repoSpec, issue)
 	if err != nil {
 		log.Println("is.Create:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// TODO: Make this work...
-	//http.Redirect(w, req, fmt.Sprintf("%s/issues/%d", baseURI, issue.ID), http.StatusSeeOther)
+	fmt.Fprintf(w, "%s/%d", baseURI, issue.ID)
 }
 
 func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
+	if globalHandler.Verbatim != nil {
+		globalHandler.Verbatim(w)
+	}
+
 	if err := req.ParseForm(); err != nil {
 		log.Println("req.ParseForm:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	ctx := context.TODO()
+	ctx := globalHandler.Context(req)
 	vars := mux.Vars(req)
+	repoSpec := globalHandler.RepoSpec(req)
 
 	var ir issues.IssueRequest
 	err := json.Unmarshal([]byte(req.PostForm.Get("value")), &ir)
 	if err != nil {
-		log.Println("postEditIssueHandler json.Unmarshal:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println("postEditIssueHandler: json.Unmarshal value:", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	issue, err := is.Edit(ctx, issues.RepoSpec{Owner: vars["owner"], Repo: vars["repo"]}, uint64(mustAtoi(vars["id"])), ir)
+	issue, err := is.Edit(ctx, repoSpec, uint64(mustAtoi(vars["id"])), ir)
 	if err != nil {
 		log.Println("is.Edit:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -301,8 +343,14 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// TODO: Move to right place?
+	user, err := is.CurrentUser(ctx)
+	if err != nil {
+		log.Println("is.CurrentUser:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	issueEvent := issues.Event{
-		Actor:     is.CurrentUser(),
+		Actor:     *user,
 		CreatedAt: time.Now(),
 	}
 	switch {
@@ -322,7 +370,7 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 		var resp = make(url.Values)
 
 		var buf bytes.Buffer
-		err := t.ExecuteTemplate(&buf, "issue-badge", issue.State)
+		err := t.ExecuteTemplate(&buf, "issue-state-badge", issue)
 		if err != nil {
 			return err
 		}
@@ -334,7 +382,7 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 		}
 		resp.Set("issue-toggle-button", buf.String())
 		buf.Reset()
-		err = t.ExecuteTemplate(&buf, "event", issueEvent)
+		err = t.ExecuteTemplate(&buf, "event", event{issueEvent})
 		if err != nil {
 			return err
 		}
@@ -351,20 +399,26 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func postCommentHandler(w http.ResponseWriter, req *http.Request) {
+	if globalHandler.Verbatim != nil {
+		globalHandler.Verbatim(w)
+	}
+
 	if err := req.ParseForm(); err != nil {
 		log.Println("req.ParseForm:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	ctx := context.TODO()
+	ctx := globalHandler.Context(req)
 	vars := mux.Vars(req)
+	repoSpec := globalHandler.RepoSpec(req)
 
 	comment := issues.Comment{
 		Body: req.PostForm.Get("value"),
 	}
 
-	comment, err := is.CreateComment(ctx, issues.RepoSpec{Owner: vars["owner"], Repo: vars["repo"]}, uint64(mustAtoi(vars["id"])), comment)
+	issueID := uint64(mustAtoi(vars["id"]))
+	comment, err := is.CreateComment(ctx, repoSpec, issueID, comment)
 	if err != nil {
 		log.Println("is.CreateComment:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -379,38 +433,31 @@ func postCommentHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func main() {
-	flag.Parse()
+func postEditCommentHandler(w http.ResponseWriter, req *http.Request) {
+	if globalHandler.Verbatim != nil {
+		globalHandler.Verbatim(w)
+	}
 
-	err := loadTemplates()
+	if err := req.ParseForm(); err != nil {
+		log.Println("req.ParseForm:", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	ctx := globalHandler.Context(req)
+	vars := mux.Vars(req)
+	repoSpec := globalHandler.RepoSpec(req)
+
+	body := req.PostForm.Get("value")
+	cr := issues.CommentRequest{
+		ID:   uint64(mustAtoi(vars["commentID"])),
+		Body: &body,
+	}
+
+	_, err := is.EditComment(ctx, repoSpec, uint64(mustAtoi(vars["id"])), cr)
 	if err != nil {
-		log.Fatalln("loadTemplates:", err)
+		log.Println("is.EditComment:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-
-	http.HandleFunc("/pages/", mainHandler)
-	r := mux.NewRouter()
-	r.HandleFunc("/github.com/{owner}/{repo}/issues", issuesHandler).Methods("GET")
-	r.HandleFunc("/github.com/{owner}/{repo}/issues/{id:[0-9]+}", issueHandler).Methods("GET")
-	r.HandleFunc("/github.com/{owner}/{repo}/issues/{id:[0-9]+}/comment", postCommentHandler).Methods("POST")
-	r.HandleFunc("/github.com/{owner}/{repo}/issues/{id:[0-9]+}/edit", postEditIssueHandler).Methods("POST")
-	r.HandleFunc("/github.com/{owner}/{repo}/issues/new", createIssueHandler).Methods("GET")
-	r.HandleFunc("/github.com/{owner}/{repo}/issues/new", postCreateIssueHandler).Methods("POST")
-	http.Handle("/", r)
-	http.Handle("/assets/", gzip_file_server.New(assets))
-	http.HandleFunc("/debug", debugHandler)
-	r.HandleFunc("/github.com/{owner}/{repo}/issues/{id:[0-9]+}/debug", debugIssueHandler).Methods("GET")
-
-	printServingAt(*httpFlag)
-	err = http.ListenAndServe(*httpFlag, nil)
-	if err != nil {
-		log.Fatalln("ListenAndServe:", err)
-	}
-}
-
-func printServingAt(addr string) {
-	hostPort := addr
-	if strings.HasPrefix(hostPort, ":") {
-		hostPort = "localhost" + hostPort
-	}
-	fmt.Printf("serving at http://%s/\n", hostPort)
 }
