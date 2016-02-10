@@ -15,6 +15,7 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/shurcooL/github_flavored_markdown"
 	"github.com/shurcooL/go/gopherjs_http/jsutil"
+	"github.com/shurcooL/markdownfmt/markdown"
 	"honnef.co/go/js/dom"
 	"src.sourcegraph.com/apps/tracker/common"
 	"src.sourcegraph.com/apps/tracker/issues"
@@ -87,11 +88,12 @@ func CreateNewIssue() {
 	commentEditor := document.QuerySelector(".comment-editor").(*dom.HTMLTextAreaElement)
 
 	title := strings.TrimSpace(titleEditor.Value)
-	body := commentEditor.Value
 	if title == "" {
 		log.Println("cannot create issue with empty title")
 		return
 	}
+	fmted, _ := markdown.Process("", []byte(commentEditor.Value), nil)
+	body := string(bytes.TrimSpace(fmted))
 
 	value, err := json.Marshal(issues.Issue{
 		Title: title,
@@ -163,7 +165,6 @@ func ToggleIssueState(issueState issues.State) {
 			log.Println(err)
 			return
 		}
-		fmt.Printf("got reply: %v\n%q\n", resp.Status, data)
 
 		switch resp.StatusCode {
 		case http.StatusOK:
@@ -171,14 +172,16 @@ func ToggleIssueState(issueState issues.State) {
 			issueStateBadge.SetInnerHTML(data.Get("issue-state-badge"))
 
 			issueToggleButton := document.GetElementByID("issue-toggle-button")
-			issueToggleButton.Underlying().Set("outerHTML", data.Get("issue-toggle-button"))
+			issueToggleButton.SetOuterHTML(data.Get("issue-toggle-button"))
 			setupIssueToggleButton()
 
-			// Create event.
-			newEvent := document.CreateElement("div").(*dom.HTMLDivElement)
-			newItemMarker := document.GetElementByID("new-item-marker")
-			newItemMarker.ParentNode().InsertBefore(newEvent, newItemMarker)
-			newEvent.Underlying().Set("outerHTML", data.Get("new-event"))
+			for _, newEventData := range data["new-event"] {
+				// Create event.
+				newEvent := document.CreateElement("div").(*dom.HTMLDivElement)
+				newItemMarker := document.GetElementByID("new-item-marker")
+				newItemMarker.ParentNode().InsertBefore(newEvent, newItemMarker)
+				newEvent.SetOuterHTML(newEventData)
+			}
 		}
 
 		// Post comment after if there's text entered, and we're reopening.
@@ -206,10 +209,11 @@ func PostComment() {
 func postComment() error {
 	commentEditor := document.QuerySelector("#new-comment-container .comment-editor").(*dom.HTMLTextAreaElement)
 
-	value := commentEditor.Value
-	if strings.TrimSpace(value) == "" {
+	fmted, _ := markdown.Process("", []byte(commentEditor.Value), nil)
+	if len(fmted) == 0 {
 		return fmt.Errorf("cannot post empty comment")
 	}
+	value := string(bytes.TrimSpace(fmted))
 
 	resp, err := http.PostForm(state.BaseURI+state.ReqPath+"/comment", url.Values{"csrf_token": {state.CSRFToken}, "value": {value}})
 	if err != nil {
@@ -231,7 +235,7 @@ func postComment() error {
 		newItemMarker := document.GetElementByID("new-item-marker")
 		newItemMarker.ParentNode().InsertBefore(newComment, newItemMarker)
 
-		newComment.Underlying().Set("outerHTML", string(body))
+		newComment.SetOuterHTML(string(body))
 
 		// Reset new-comment component.
 		commentEditor.Value = ""
@@ -245,15 +249,9 @@ func postComment() error {
 }
 
 // editComment edits a comment to the remote API.
-func editComment(commentEditor *dom.HTMLTextAreaElement) error {
-	commentID := commentEditor.GetAttribute("data-id")
-	value := commentEditor.Value
-	if strings.TrimSpace(value) == "" {
-		// TODO: Unless ID is 0, etc.
-		return fmt.Errorf("cannot post empty comment")
-	}
-
-	resp, err := http.PostForm(state.BaseURI+state.ReqPath+"/comment/"+commentID, url.Values{"csrf_token": {state.CSRFToken}, "value": {value}})
+// Comment must be validated before calling this.
+func editComment(id string, content string) error {
+	resp, err := http.PostForm(state.BaseURI+state.ReqPath+"/comment/"+id, url.Values{"csrf_token": {state.CSRFToken}, "value": {content}})
 	if err != nil {
 		return err
 	}
@@ -283,8 +281,11 @@ func MarkdownPreview(this dom.HTMLElement) {
 	commentEditor := container.QuerySelector(".comment-editor").(*dom.HTMLTextAreaElement)
 	commentPreview := container.QuerySelector(".comment-preview").(*dom.HTMLDivElement)
 
-	if strings.TrimSpace(commentEditor.Value) != "" {
-		commentPreview.SetInnerHTML(string(github_flavored_markdown.Markdown([]byte(commentEditor.Value))))
+	fmted, _ := markdown.Process("", []byte(commentEditor.Value), nil)
+	value := bytes.TrimSpace(fmted)
+
+	if len(value) != 0 {
+		commentPreview.SetInnerHTML(string(github_flavored_markdown.Markdown(value)))
 	} else {
 		commentPreview.SetInnerHTML(`<i class="gray">Nothing to preview.</i>`)
 	}
