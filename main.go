@@ -64,8 +64,9 @@ func New(service issues.Service, opt Options) http.Handler {
 	r.HandleFunc("/new", createIssueHandler).Methods("GET")
 	r.HandleFunc("/new", postCreateIssueHandler).Methods("POST")
 	h.Handle("/", r)
-	assetsFileServer := gzip_file_server.New(Assets)
-	h.Handle("/assets/", assetsFileServer)
+	fileServer := gzip_file_server.New(Assets)
+	h.Handle("/assets/", fileServer)
+	h.Handle("/assets/octicons/", http.StripPrefix("/assets/", fileServer))
 	h.HandleFunc("/debug", debugHandler)
 
 	globalHandler = &handler{

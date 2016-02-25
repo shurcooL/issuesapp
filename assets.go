@@ -9,6 +9,7 @@ import (
 
 	"github.com/shurcooL/go/gopherjs_http"
 	"github.com/shurcooL/httpfs/union"
+	"github.com/shurcooL/octicons"
 )
 
 func importPathToDir(importPath string) string {
@@ -20,5 +21,6 @@ func importPathToDir(importPath string) string {
 }
 
 var Assets = union.New(map[string]http.FileSystem{
-	"/assets": gopherjs_http.NewFS(http.Dir(importPathToDir("github.com/shurcooL/issuesapp/assets"))),
+	"/assets":   gopherjs_http.NewFS(http.Dir(importPathToDir("github.com/shurcooL/issuesapp/assets"))),
+	"/octicons": octicons.Assets,
 })
