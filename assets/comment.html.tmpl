@@ -49,9 +49,9 @@
 {{end}}
 
 {{define "reaction"}}
-<div class="reaction">
-	<span class="emoji-outer emoji-sizer"><span class="emoji-inner" style="background: url(https://slack.global.ssl.fastly.net/d4bf/img/emoji_2015_2/sheet_apple_64_indexed_256colors.png); background-position: 65% 45%;"></span></span>
-	<b>1</b>
+<div class="reaction others" title="{{.Users | jsonfmt}}">
+	<span class="emoji-outer emoji-sizer"><span class="emoji-inner" style="background: url(https://slack.global.ssl.fastly.net/d4bf/img/emoji_2015_2/sheet_apple_64_indexed_256colors.png); background-position: {{reactionPosition .Reaction}};"></span></span>
+	<b>{{len .Users}}</b>
 </div>
 {{end}}
 

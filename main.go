@@ -19,6 +19,7 @@ import (
 	"github.com/shurcooL/go/gzip_file_server"
 	"github.com/shurcooL/httpfs/html/vfstemplate"
 	"github.com/shurcooL/issuesapp/common"
+	"github.com/shurcooL/reactions"
 	"golang.org/x/net/context"
 	"src.sourcegraph.com/apps/tracker/issues"
 )
@@ -93,8 +94,9 @@ func loadTemplates() error {
 			b, err := json.MarshalIndent(v, "", "\t")
 			return string(b), err
 		},
-		"reltime": humanize.Time,
-		"gfm":     func(s string) template.HTML { return template.HTML(github_flavored_markdown.Markdown([]byte(s))) },
+		"reltime":          humanize.Time,
+		"gfm":              func(s string) template.HTML { return template.HTML(github_flavored_markdown.Markdown([]byte(s))) },
+		"reactionPosition": func(emojiID issues.EmojiID) string { return reactions.Position(":" + string(emojiID) + ":") },
 	})
 	t, err = vfstemplate.ParseGlob(Assets, t, "/assets/*.tmpl")
 	return err
