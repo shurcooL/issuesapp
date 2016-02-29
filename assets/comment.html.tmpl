@@ -21,6 +21,7 @@
 			<div class="list-entry-container list-entry-border">
 				<div class="list-entry-header" style="display: flex;">
 					<span class="content">{{template "user" .User}} commented <a href="#comment-{{.ID}}" onclick="AnchorScroll(this, event);">{{template "time" .CreatedAt}}</a></span>
+					<span class="right-icon"><a href="javascript:" title="React" onclick="ShowReactionMenu(this, {{.ID}});"><i class="octicon octicon-smiley"><sup>+</sup></i></a></span>
 					{{if .Editable}}<span class="right-icon"><a href="javascript:" title="Edit" onclick="EditComment({{`edit` | json}}, this);"><span class="octicon octicon-pencil"></span></a></span>{{end}}
 				</div>
 				<div class="list-entry-body">
@@ -38,7 +39,7 @@
 	<div style="display: none;">
 		{{template "edit-comment" .}}
 	</div>
-	<div class="comment-reactions-container">{{template "reactions" .Reactions}}</div>
+	<div class="comment-reactions-container">{{template "reactions" .Reactions}}{{template "new-reaction"}}</div>
 </div>
 {{end}}
 
@@ -52,6 +53,12 @@
 <div class="reaction others" title="{{.Users | jsonfmt}}">
 	<span class="emoji-outer emoji-sizer"><span class="emoji-inner" style="background: url(https://slack.global.ssl.fastly.net/d4bf/img/emoji_2015_2/sheet_apple_64_indexed_256colors.png); background-position: {{reactionPosition .Reaction}};"></span></span>
 	<b>{{len .Users}}</b>
+</div>
+{{end}}
+
+{{define "new-reaction"}}
+<div class="new-reaction">
+	<i class="octicon octicon-smiley"><sup>+</sup></i>
 </div>
 {{end}}
 
