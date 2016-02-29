@@ -44,7 +44,7 @@ type handler struct {
 
 // New returns an issues app http.Handler using given service and options.
 func New(service issues.Service, opt Options) http.Handler {
-	err := loadTemplates()
+	err := loadTemplates(nil)
 	if err != nil {
 		log.Fatalln("loadTemplates:", err)
 	}
@@ -82,7 +82,7 @@ var globalHandler *handler
 
 var t *template.Template
 
-func loadTemplates() error {
+func loadTemplates(currentUser *issues.User) error {
 	var err error
 	t = template.New("").Funcs(template.FuncMap{
 		"dump": func(v interface{}) string { return goon.Sdump(v) },
@@ -97,6 +97,21 @@ func loadTemplates() error {
 		"reltime":          humanize.Time,
 		"gfm":              func(s string) template.HTML { return template.HTML(github_flavored_markdown.Markdown([]byte(s))) },
 		"reactionPosition": func(emojiID issues.EmojiID) string { return reactions.Position(":" + string(emojiID) + ":") },
+		// THINK.
+		"containsCurrentUser": func(users []issues.User) bool {
+			if currentUser == nil {
+				return false
+			}
+			if len(users) >= 2 { // HACK.
+				return true
+			}
+			for _, u := range users {
+				if u.ID == currentUser.ID {
+					return true
+				}
+			}
+			return false
+		},
 	})
 	t, err = vfstemplate.ParseGlob(Assets, t, "/assets/*.tmpl")
 	return err
@@ -196,7 +211,7 @@ func (s state) Items() ([]issueItem, error) {
 var is issues.Service
 
 func issuesHandler(w http.ResponseWriter, req *http.Request) {
-	if err := loadTemplates(); err != nil {
+	if err := loadTemplates(nil); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -220,15 +235,15 @@ func issuesHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func issueHandler(w http.ResponseWriter, req *http.Request) {
-	if err := loadTemplates(); err != nil {
-		log.Println("loadTemplates:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	baseState, err := baseState(req)
 	if err != nil {
 		log.Println("baseState:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// THINK.
+	if err := loadTemplates(baseState.CurrentUser); err != nil {
+		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -260,7 +275,7 @@ func debugHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func createIssueHandler(w http.ResponseWriter, req *http.Request) {
-	if err := loadTemplates(); err != nil {
+	if err := loadTemplates(nil); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -10,7 +10,7 @@ import (
 )
 
 func mockHandler(w http.ResponseWriter, req *http.Request) {
-	if err := loadTemplates(); err != nil {
+	if err := loadTemplates(nil); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
