@@ -37,11 +37,11 @@ div.list-entry-header {
 	border-bottom: 1px solid #eee;
 }
 .hash-selected div.list-entry-border {
-	border: 1px solid #e7dfbe;
+	border: 1px solid #8ca2d9;
 }
 .hash-selected div.list-entry-header {
-	background-color: #fff8db;
-	border-bottom: 1px solid #e7dfbe;
+	background-color: #dbe5ff;
+	border-bottom: 1px solid #8ca2d9;
 }
 div.list-entry-header.tabs {
 	padding: 16px 10px 6px 10px;
