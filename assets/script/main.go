@@ -59,6 +59,8 @@ func setup() {
 			}
 		})
 	}
+
+	setupReactionsMenu()
 }
 
 func setupIssueToggleButton() {

@@ -52,6 +52,10 @@ func init() {
 		switch ke := event.(*dom.KeyboardEvent); {
 		// Escape.
 		case ke.KeyCode == 27 && !ke.Repeat && !ke.CtrlKey && !ke.AltKey && !ke.MetaKey && !ke.ShiftKey:
+			if strings.TrimPrefix(dom.GetWindow().Location().Hash, "#") == "" {
+				return
+			}
+
 			// TODO: dom.GetWindow().History().ReplaceState(...)
 			js.Global.Get("window").Get("history").Call("replaceState", nil, nil, "#")
 
