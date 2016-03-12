@@ -35,9 +35,9 @@ func init() {
 	})
 	// Start watching for hashchange events.
 	dom.GetWindow().AddEventListener("hashchange", false, func(event dom.Event) {
-		event.PreventDefault()
-
 		processHashSet()
+
+		event.PreventDefault()
 	})
 
 	document.AddEventListener("keydown", false, func(event dom.Event) {

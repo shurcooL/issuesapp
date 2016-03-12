@@ -13,7 +13,7 @@ import (
 
 var Reactions ReactionsMenu
 
-func (rm *ReactionsMenu) Show(this dom.HTMLElement, commentID uint64) {
+func (rm *ReactionsMenu) Show(this dom.HTMLElement, event dom.Event, commentID uint64) {
 	updateSelected(0)
 	rm.filter.Value = ""
 	rm.filter.Underlying().Call("dispatchEvent", js.Global.Get("CustomEvent").New("input")) // Trigger "input" event listeners.
@@ -28,6 +28,12 @@ func (rm *ReactionsMenu) Show(this dom.HTMLElement, commentID uint64) {
 	if rm.authenticatedUser {
 		rm.filter.Focus()
 	}
+
+	event.PreventDefault()
+}
+
+func (rm *ReactionsMenu) hide() {
+	rm.menu.Style().SetProperty("display", "none", "")
 }
 
 type ReactionsMenu struct {
@@ -62,9 +68,26 @@ func setupReactionsMenu() {
 	Reactions.filter = document.CreateElement("input").(*dom.HTMLInputElement)
 	Reactions.filter.SetClass("rm-reactions-filter")
 	Reactions.filter.Placeholder = "Search"
+	Reactions.menu.AddEventListener("click", false, func(event dom.Event) {
+		if Reactions.authenticatedUser {
+			Reactions.filter.Focus()
+		}
+	})
 	container.AppendChild(Reactions.filter)
 	results := document.CreateElement("div").(*dom.HTMLDivElement)
 	results.SetClass("rm-reactions-results")
+	results.AddEventListener("click", false, func(event dom.Event) {
+		me := event.(*dom.MouseEvent)
+		x := (me.ClientX - int(results.GetBoundingClientRect().Left) + results.Underlying().Get("scrollLeft").Int()) / 30
+		y := (me.ClientY - int(results.GetBoundingClientRect().Top) + results.Underlying().Get("scrollTop").Int()) / 30
+		i := y*9 + x
+		if i < 0 || i >= len(filtered) {
+			return
+		}
+		emojiID := filtered[i]
+		fmt.Println("reacted with:", emojiID)
+		Reactions.hide()
+	})
 	container.AppendChild(results)
 	preview := document.CreateElement("div").(*dom.HTMLDivElement)
 	container.AppendChild(preview)
@@ -106,6 +129,16 @@ func setupReactionsMenu() {
 	})
 
 	document.Body().AppendChild(Reactions.menu)
+
+	document.AddEventListener("click", false, func(event dom.Event) {
+		if event.DefaultPrevented() {
+			return
+		}
+
+		if !Reactions.menu.Contains(event.Target()) {
+			Reactions.hide()
+		}
+	})
 }
 
 var filtered []string
