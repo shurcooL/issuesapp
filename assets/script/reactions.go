@@ -16,11 +16,13 @@ func ShowReactionMenu(this dom.HTMLElement, commentID uint64) {
 	Reactions.filter.Underlying().Call("dispatchEvent", js.Global.Get("CustomEvent").New("input")) // Trigger "input" event listeners.
 
 	Reactions.menu.Style().SetProperty("display", "initial", "")
+
 	top := this.GetBoundingClientRect().Top - Reactions.menu.GetBoundingClientRect().Height - 8
 	if top < 10 {
 		top = 10
 	}
 	Reactions.menu.Style().SetProperty("top", fmt.Sprint(top), "")
+	Reactions.filter.Focus()
 }
 
 var Reactions struct {
