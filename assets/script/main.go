@@ -15,9 +15,9 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/shurcooL/github_flavored_markdown"
 	"github.com/shurcooL/go/gopherjs_http/jsutil"
+	"github.com/shurcooL/issuesapp/common"
 	"github.com/shurcooL/markdownfmt/markdown"
 	"honnef.co/go/js/dom"
-	"src.sourcegraph.com/apps/tracker/common"
 	"src.sourcegraph.com/apps/tracker/issues"
 )
 
@@ -82,7 +82,6 @@ func postJSON(url string, body []byte) (*http.Response, error) {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Csrf-Token", state.CSRFToken)
 	return http.DefaultClient.Do(req)
 }
 
@@ -151,7 +150,7 @@ func ToggleIssueState(issueState issues.State) {
 			panic(err)
 		}
 
-		resp, err := http.PostForm(state.BaseURI+state.ReqPath+"/edit", url.Values{"csrf_token": {state.CSRFToken}, "value": {string(value)}})
+		resp, err := http.PostForm(state.BaseURI+state.ReqPath+"/edit", url.Values{"value": {string(value)}})
 		if err != nil {
 			log.Println(err)
 			return
@@ -218,7 +217,7 @@ func postComment() error {
 	}
 	value := string(bytes.TrimSpace(fmted))
 
-	resp, err := http.PostForm(state.BaseURI+state.ReqPath+"/comment", url.Values{"csrf_token": {state.CSRFToken}, "value": {value}})
+	resp, err := http.PostForm(state.BaseURI+state.ReqPath+"/comment", url.Values{"value": {value}})
 	if err != nil {
 		return err
 	}
@@ -254,7 +253,7 @@ func postComment() error {
 // editComment edits a comment to the remote API.
 // Comment must be validated before calling this.
 func editComment(id string, content string) error {
-	resp, err := http.PostForm(state.BaseURI+state.ReqPath+"/comment/"+id, url.Values{"csrf_token": {state.CSRFToken}, "value": {content}})
+	resp, err := http.PostForm(state.BaseURI+state.ReqPath+"/comment/"+id, url.Values{"value": {content}})
 	if err != nil {
 		return err
 	}

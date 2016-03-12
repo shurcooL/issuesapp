@@ -25,12 +25,10 @@ import (
 )
 
 type Options struct {
-	Context   func(req *http.Request) context.Context
-	RepoSpec  func(req *http.Request) issues.RepoSpec
-	BaseURI   func(req *http.Request) string
-	CSRFToken func(req *http.Request) string
-	Verbatim  func(w http.ResponseWriter)
-	HeadPre   template.HTML
+	Context  func(req *http.Request) context.Context
+	RepoSpec func(req *http.Request) issues.RepoSpec
+	BaseURI  func(req *http.Request) string
+	HeadPre  template.HTML
 
 	// TODO.
 	BaseState func(req *http.Request) BaseState
@@ -259,10 +257,6 @@ func issueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func debugHandler(w http.ResponseWriter, req *http.Request) {
-	if globalHandler.Verbatim != nil {
-		globalHandler.Verbatim(w)
-	}
-
 	fmt.Println("debugHandler:", req.URL.Path)
 
 	/*ctx := putil.Context(req)
@@ -303,10 +297,6 @@ func createIssueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
-	if globalHandler.Verbatim != nil {
-		globalHandler.Verbatim(w)
-	}
-
 	ctx := globalHandler.Context(req)
 	baseURI := globalHandler.BaseURI(req)
 	repoSpec := globalHandler.RepoSpec(req)
@@ -330,10 +320,6 @@ func postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
-	if globalHandler.Verbatim != nil {
-		globalHandler.Verbatim(w)
-	}
-
 	if err := req.ParseForm(); err != nil {
 		log.Println("req.ParseForm:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -396,10 +382,6 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func postCommentHandler(w http.ResponseWriter, req *http.Request) {
-	if globalHandler.Verbatim != nil {
-		globalHandler.Verbatim(w)
-	}
-
 	if err := req.ParseForm(); err != nil {
 		log.Println("req.ParseForm:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -431,10 +413,6 @@ func postCommentHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func postEditCommentHandler(w http.ResponseWriter, req *http.Request) {
-	if globalHandler.Verbatim != nil {
-		globalHandler.Verbatim(w)
-	}
-
 	if err := req.ParseForm(); err != nil {
 		log.Println("req.ParseForm:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
