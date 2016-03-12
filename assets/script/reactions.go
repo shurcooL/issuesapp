@@ -11,31 +11,53 @@ import (
 	"honnef.co/go/js/dom"
 )
 
-func ShowReactionMenu(this dom.HTMLElement, commentID uint64) {
-	Reactions.filter.Value = ""
-	Reactions.filter.Underlying().Call("dispatchEvent", js.Global.Get("CustomEvent").New("input")) // Trigger "input" event listeners.
+var Reactions ReactionsMenu
 
-	Reactions.menu.Style().SetProperty("display", "initial", "")
+func (rm *ReactionsMenu) Show(this dom.HTMLElement, commentID uint64) {
+	updateSelected(0)
+	rm.filter.Value = ""
+	rm.filter.Underlying().Call("dispatchEvent", js.Global.Get("CustomEvent").New("input")) // Trigger "input" event listeners.
 
-	top := this.GetBoundingClientRect().Top - Reactions.menu.GetBoundingClientRect().Height - 8
+	rm.menu.Style().SetProperty("display", "initial", "")
+
+	top := this.GetBoundingClientRect().Top - rm.menu.GetBoundingClientRect().Height - 8
 	if top < 10 {
 		top = 10
 	}
-	Reactions.menu.Style().SetProperty("top", fmt.Sprint(top), "")
-	Reactions.filter.Focus()
+	rm.menu.Style().SetProperty("top", fmt.Sprint(top), "")
+	if rm.authenticatedUser {
+		rm.filter.Focus()
+	}
 }
 
-var Reactions struct {
+type ReactionsMenu struct {
 	menu   *dom.HTMLDivElement
 	filter *dom.HTMLInputElement
+
+	authenticatedUser bool
 }
 
 func setupReactionsMenu() {
+	Reactions.authenticatedUser = state.CurrentUser != nil
+	Reactions.authenticatedUser = true
+
 	Reactions.menu = document.CreateElement("div").(*dom.HTMLDivElement)
 	Reactions.menu.SetID("rm-reactions-menu")
 
-	container := document.CreateElement("div")
+	container := document.CreateElement("div").(*dom.HTMLDivElement)
+	container.SetClass("rm-reactions-menu-container")
 	Reactions.menu.AppendChild(container)
+
+	// Disable for unauthenticated user.
+	if !Reactions.authenticatedUser {
+		disabled := document.CreateElement("div").(*dom.HTMLDivElement)
+		disabled.SetClass("rm-reactions-menu-disabled")
+		signIn := document.CreateElement("div").(*dom.HTMLDivElement)
+		signIn.SetClass("rm-reactions-menu-signin")
+		signIn.SetInnerHTML(`<form method="post" action="/login/github" style="display: inline-block;"><input type="submit" name="" value="Sign in via GitHub"></form> to react.`)
+		disabled.AppendChild(signIn)
+		container.AppendChild(disabled)
+	}
 
 	Reactions.filter = document.CreateElement("input").(*dom.HTMLInputElement)
 	Reactions.filter.SetClass("rm-reactions-filter")
@@ -48,9 +70,9 @@ func setupReactionsMenu() {
 	container.AppendChild(preview)
 	preview.SetOuterHTML(`<div class="rm-reactions-preview"><span id="rm-reactions-preview-emoji"></span><span id="rm-reactions-preview-label"></span></div>`)
 
-	update(Reactions.filter, results)
+	updateFilteredResults(Reactions.filter, results)
 	Reactions.filter.AddEventListener("input", false, func(dom.Event) {
-		update(Reactions.filter, results)
+		updateFilteredResults(Reactions.filter, results)
 	})
 
 	results.AddEventListener("mousemove", false, func(event dom.Event) {
@@ -58,15 +80,7 @@ func setupReactionsMenu() {
 		x := (me.ClientX - int(results.GetBoundingClientRect().Left) + results.Underlying().Get("scrollLeft").Int()) / 30
 		y := (me.ClientY - int(results.GetBoundingClientRect().Top) + results.Underlying().Get("scrollTop").Int()) / 30
 		i := y*9 + x
-		if i < 0 || i >= len(filtered) {
-			return
-		}
-		emojiID := filtered[i]
-
-		label := document.GetElementByID("rm-reactions-preview-label").(*dom.HTMLSpanElement)
-		label.SetTextContent(strings.Trim(emojiID, ":"))
-		emoji := document.GetElementByID("rm-reactions-preview-emoji").(*dom.HTMLSpanElement)
-		emoji.SetInnerHTML(`<span class="rm-emoji rm-large" style="background-position: ` + reactions.Position(emojiID) + `;"></span></div>`)
+		updateSelected(i)
 	})
 
 	document.AddEventListener("keydown", false, func(event dom.Event) {
@@ -96,7 +110,7 @@ func setupReactionsMenu() {
 
 var filtered []string
 
-func update(filter *dom.HTMLInputElement, results dom.Element) {
+func updateFilteredResults(filter *dom.HTMLInputElement, results dom.Element) {
 	lower := strings.ToLower(strings.TrimSpace(filter.Value))
 	results.SetInnerHTML("")
 	filtered = nil
@@ -109,4 +123,17 @@ func update(filter *dom.HTMLInputElement, results dom.Element) {
 		element.SetOuterHTML(`<div class="rm-reaction"><span class="rm-emoji" style="background-position: ` + reactions.Position(emojiID) + `;"></span></div>`)
 		filtered = append(filtered, emojiID)
 	}
+}
+
+// updateSelected reaction to filtered[index].
+func updateSelected(index int) {
+	if index < 0 || index >= len(filtered) {
+		return
+	}
+	emojiID := filtered[index]
+
+	label := document.GetElementByID("rm-reactions-preview-label").(*dom.HTMLSpanElement)
+	label.SetTextContent(strings.Trim(emojiID, ":"))
+	emoji := document.GetElementByID("rm-reactions-preview-emoji").(*dom.HTMLSpanElement)
+	emoji.SetInnerHTML(`<span class="rm-emoji rm-large" style="background-position: ` + reactions.Position(emojiID) + `;"></span></div>`)
 }
