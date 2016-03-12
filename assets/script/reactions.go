@@ -20,11 +20,11 @@ func (rm *ReactionsMenu) Show(this dom.HTMLElement, commentID uint64) {
 
 	rm.menu.Style().SetProperty("display", "initial", "")
 
-	top := this.GetBoundingClientRect().Top - rm.menu.GetBoundingClientRect().Height - 8
+	top := float64(dom.GetWindow().ScrollY()) + this.GetBoundingClientRect().Top - rm.menu.GetBoundingClientRect().Height - 8
 	if top < 10 {
 		top = 10
 	}
-	rm.menu.Style().SetProperty("top", fmt.Sprint(top), "")
+	rm.menu.Style().SetProperty("top", fmt.Sprintf("%vpx", top), "")
 	if rm.authenticatedUser {
 		rm.filter.Focus()
 	}
