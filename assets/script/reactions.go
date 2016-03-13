@@ -27,6 +27,7 @@ func (rm *ReactionsMenu) Show(this dom.HTMLElement, event dom.Event, commentID u
 
 	rm.menu.Style().SetProperty("display", "initial", "")
 
+	rm.results.Set("scrollTop", 0)
 	top := float64(dom.GetWindow().ScrollY()) + this.GetBoundingClientRect().Top - rm.menu.GetBoundingClientRect().Height - 10
 	if top < 10 {
 		top = 10
@@ -51,8 +52,9 @@ func (rm *ReactionsMenu) hide() {
 type ReactionsMenu struct {
 	commentID uint64 // commentID from last Show.
 
-	menu   *dom.HTMLDivElement
-	filter *dom.HTMLInputElement
+	menu    *dom.HTMLDivElement
+	filter  *dom.HTMLInputElement
+	results *dom.HTMLDivElement
 
 	authenticatedUser bool
 }
@@ -88,12 +90,12 @@ func setupReactionsMenu() {
 		}
 	})
 	container.AppendChild(Reactions.filter)
-	results := document.CreateElement("div").(*dom.HTMLDivElement)
-	results.SetClass("rm-reactions-results")
-	results.AddEventListener("click", false, func(event dom.Event) {
+	Reactions.results = document.CreateElement("div").(*dom.HTMLDivElement)
+	Reactions.results.SetClass("rm-reactions-results")
+	Reactions.results.AddEventListener("click", false, func(event dom.Event) {
 		me := event.(*dom.MouseEvent)
-		x := (me.ClientX - int(results.GetBoundingClientRect().Left) + results.Underlying().Get("scrollLeft").Int()) / 30
-		y := (me.ClientY - int(results.GetBoundingClientRect().Top) + results.Underlying().Get("scrollTop").Int()) / 30
+		x := (me.ClientX - int(Reactions.results.GetBoundingClientRect().Left) + Reactions.results.Underlying().Get("scrollLeft").Int()) / 30
+		y := (me.ClientY - int(Reactions.results.GetBoundingClientRect().Top) + Reactions.results.Underlying().Get("scrollTop").Int()) / 30
 		i := y*9 + x
 		if i < 0 || i >= len(filtered) {
 			return
@@ -108,20 +110,20 @@ func setupReactionsMenu() {
 		}()
 		Reactions.hide()
 	})
-	container.AppendChild(results)
+	container.AppendChild(Reactions.results)
 	preview := document.CreateElement("div").(*dom.HTMLDivElement)
 	container.AppendChild(preview)
 	preview.SetOuterHTML(`<div class="rm-reactions-preview"><span id="rm-reactions-preview-emoji"></span><span id="rm-reactions-preview-label"></span></div>`)
 
-	updateFilteredResults(Reactions.filter, results)
+	updateFilteredResults(Reactions.filter, Reactions.results)
 	Reactions.filter.AddEventListener("input", false, func(dom.Event) {
-		updateFilteredResults(Reactions.filter, results)
+		updateFilteredResults(Reactions.filter, Reactions.results)
 	})
 
-	results.AddEventListener("mousemove", false, func(event dom.Event) {
+	Reactions.results.AddEventListener("mousemove", false, func(event dom.Event) {
 		me := event.(*dom.MouseEvent)
-		x := (me.ClientX - int(results.GetBoundingClientRect().Left) + results.Underlying().Get("scrollLeft").Int()) / 30
-		y := (me.ClientY - int(results.GetBoundingClientRect().Top) + results.Underlying().Get("scrollTop").Int()) / 30
+		x := (me.ClientX - int(Reactions.results.GetBoundingClientRect().Left) + Reactions.results.Underlying().Get("scrollLeft").Int()) / 30
+		y := (me.ClientY - int(Reactions.results.GetBoundingClientRect().Top) + Reactions.results.Underlying().Get("scrollTop").Int()) / 30
 		i := y*9 + x
 		updateSelected(i)
 	})

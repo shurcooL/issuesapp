@@ -465,7 +465,6 @@ func postToggleReactionHandler(w http.ResponseWriter, req *http.Request) {
 
 	// TODO: Deduplicate.
 	// {{template "reactions" .Reactions}}{{template "new-reaction" .ID}}
-	goon.DumpExpr(comment.Reactions)
 	err = t.ExecuteTemplate(w, "reactions", comment.Reactions)
 	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
