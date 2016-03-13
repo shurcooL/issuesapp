@@ -287,7 +287,6 @@ div.rm-reaction:hover {
 
 div#rm-reactions-menu {
 	position: absolute;
-	right: 12px;
 	display: none;
 	z-index: 1000;
 

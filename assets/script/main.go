@@ -34,6 +34,7 @@ func main() {
 	js.Global.Set("PostComment", PostComment)
 	js.Global.Set("EditComment", jsutil.Wrap(EditComment))
 	js.Global.Set("ShowReactionMenu", jsutil.Wrap(Reactions.Show))
+	js.Global.Set("ToggleReaction", jsutil.Wrap(ToggleReaction))
 
 	stateJSON := js.Global.Get("State").String()
 	err := json.Unmarshal([]byte(stateJSON), &state)
