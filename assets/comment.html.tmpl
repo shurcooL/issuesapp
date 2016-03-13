@@ -44,28 +44,24 @@
 {{end}}
 
 {{define "reactions"}}
-	{{range .}}
+	{{range . -}}
 		{{template "reaction" .}}
-	{{end}}
+	{{- end -}}
 {{end}}
 
-{{define "reaction"}}
-<a href="javascript:" title="{{.Users | jsonfmt}}" onclick="ToggleReaction(this, event, {{.Reaction | json}});">{{/*
-	*/}}<div class="reaction {{if (not (containsCurrentUser .Users))}}others{{end}}">
-		<span class="emoji-outer emoji-sizer"><span class="emoji-inner" style="background: url(https://slack.global.ssl.fastly.net/d4bf/img/emoji_2015_2/sheet_apple_64_indexed_256colors.png); background-position: {{reactionPosition .Reaction}};"></span></span>
-		<b>{{len .Users}}</b>
-	</div>{{/*
-*/}}</a>
-{{end}}
+{{define "reaction"}}<a class="reaction" href="javascript:" title="{{.Users | jsonfmt}}" onclick="ToggleReaction(this, event, {{.Reaction | json}});"
+	><div class="reaction {{if (not (containsCurrentUser .Users))}}others{{end}}"
+		><span class="emoji-outer emoji-sizer"><span class="emoji-inner" style="background: url(https://slack.global.ssl.fastly.net/d4bf/img/emoji_2015_2/sheet_apple_64_indexed_256colors.png); background-position: {{reactionPosition .Reaction}};"></span></span
+		><b>{{len .Users}}</b
+	></div
+></a>{{end}}
 
 {{/* Dot is an issues.Comment.ID. */}}
-{{define "new-reaction"}}
-<a href="javascript:" title="React" onclick="ShowReactionMenu(this, event, {{.}});">
-	<div class="new-reaction">
-		<i class="octicon octicon-smiley"><sup>+</sup></i>
-	</div>
-</a>
-{{end}}
+{{define "new-reaction"}}<a href="javascript:" title="React" onclick="ShowReactionMenu(this, event, {{.}});"
+	><div class="new-reaction"
+		><i class="octicon octicon-smiley"><sup>+</sup></i
+	></div
+></a>{{end}}
 
 {{define "user"}}
 <a class="black" href="{{.HTMLURL}}" target="_blank"><strong>{{.Login}}</strong></a>

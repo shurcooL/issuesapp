@@ -188,7 +188,6 @@ nav .selected {
 }
 
 div.comment-reactions-container {
-	margin-top: 6px;
 	margin-left: 58px;
 }
 div.comment-reactions-container:hover div.new-reaction {
@@ -208,6 +207,7 @@ span.emoji-outer {
 	height: 1em;
 	width: 1em;
 	font-size: 22px;
+	margin-right: 4px;
 }
 .reaction b {
 	font-family: sans-serif;
@@ -224,7 +224,11 @@ div.reaction {
 	color: #8ec0e6;
 	border: 1px solid #92def9;
 	border-radius: 4px;
-	margin-right: 2px;
+}
+a.reaction {
+	display: inline-block;
+	margin-right: 6px;
+	margin-top: 4px;
 }
 
 div.others {
@@ -245,7 +249,7 @@ div.new-reaction {
 	color: #aaa;
 	border: 1px solid #e0e0e0;
 	border-radius: 4px;
-	vertical-align: top;
+	margin-top: 4px;
 }
 div.new-reaction i {
 	font-size: 18px;
