@@ -102,9 +102,6 @@ func loadTemplates(currentUser *issues.User) error {
 			if currentUser == nil {
 				return false
 			}
-			if len(users) >= 2 { // HACK.
-				return true
-			}
 			for _, u := range users {
 				if u.ID == currentUser.ID {
 					return true
@@ -456,12 +453,28 @@ func postToggleReactionHandler(w http.ResponseWriter, req *http.Request) {
 		Reaction: &reaction,
 	}
 
-	_, err := is.EditComment(ctx, repoSpec, uint64(mustAtoi(vars["id"])), cr)
+	comment, err := is.EditComment(ctx, repoSpec, uint64(mustAtoi(vars["id"])), cr)
 	if os.IsPermission(err) { // TODO: Move this to a higher level (and upate all other similar code too).
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	} else if err != nil {
 		log.Println("is.EditComment:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// TODO: Deduplicate.
+	// {{template "reactions" .Reactions}}{{template "new-reaction" .ID}}
+	goon.DumpExpr(comment.Reactions)
+	err = t.ExecuteTemplate(w, "reactions", comment.Reactions)
+	if err != nil {
+		log.Println("t.ExecuteTemplate:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = t.ExecuteTemplate(w, "new-reaction", comment.ID)
+	if err != nil {
+		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

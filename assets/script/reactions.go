@@ -74,7 +74,7 @@ func setupReactionsMenu() {
 		disabled.SetClass("rm-reactions-menu-disabled")
 		signIn := document.CreateElement("div").(*dom.HTMLDivElement)
 		signIn.SetClass("rm-reactions-menu-signin")
-		signIn.SetInnerHTML(`<form method="post" action="/login/github" style="display: inline-block;"><input type="submit" name="" value="Sign in via GitHub"></form> to react.`)
+		signIn.SetInnerHTML(`<form method="post" action="/login/github" style="display: inline-block; margin-bottom: 0;"><input type="submit" name="" value="Sign in via GitHub"></form> to react.`)
 		disabled.AppendChild(signIn)
 		container.AppendChild(disabled)
 	}
@@ -191,12 +191,17 @@ func updateSelected(index int) {
 	emoji.SetInnerHTML(`<span class="rm-emoji rm-large" style="background-position: ` + reactions.Position(emojiID) + `;"></span></div>`)
 }
 
-func ToggleReaction(this dom.HTMLElement, emojiID string) {
+func (rm *ReactionsMenu) ToggleReaction(this dom.HTMLElement, event dom.Event, emojiID string) {
 	container := getAncestorByClassName(this, "comment-edit-container")
 	// HACK: Currently the child nodes are [text, div, text, div, text], but that isn't reliable.
 	editView := container.ChildNodes()[3].(dom.HTMLElement)
 	commentEditor := editView.QuerySelector(".comment-editor").(*dom.HTMLTextAreaElement)
 	commentID, _ := strconv.ParseUint(commentEditor.GetAttribute("data-id"), 10, 64)
+
+	if !rm.authenticatedUser {
+		rm.Show(this, event, commentID)
+		return
+	}
 
 	go func() {
 		err := postReaction(emojiID, commentID)
@@ -213,7 +218,7 @@ func postReaction(emojiID string, commentID uint64) error {
 		return err
 	}
 	defer resp.Body.Close()
-	_, err = ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -222,6 +227,8 @@ func postReaction(emojiID string, commentID uint64) error {
 
 	switch resp.StatusCode {
 	case http.StatusOK:
+		reactionsContainer := document.GetElementByID(fmt.Sprintf("comment-%v-reactions-container", commentID)).(dom.HTMLElement)
+		reactionsContainer.SetInnerHTML(string(body))
 		return nil
 	default:
 		return fmt.Errorf("did not get acceptable status code: %v", resp.Status)
