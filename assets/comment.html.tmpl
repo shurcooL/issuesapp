@@ -20,7 +20,7 @@
 		<div id="comment-{{.ID}}" style="display: flex;" class="list-entry">
 			<div class="list-entry-container list-entry-border">
 				<div class="list-entry-header" style="display: flex;">
-					<span class="content">{{template "user" .User}} commented <a href="#comment-{{.ID}}" onclick="AnchorScroll(this, event);">{{template "time" .CreatedAt}}</a></span>
+					<span class="content">{{template "user" .User}} commented <a class="black" href="#comment-{{.ID}}" onclick="AnchorScroll(this, event);">{{template "time" .CreatedAt}}</a></span>
 					<span class="right-icon"><a href="javascript:" title="React" onclick="ShowReactionMenu(this, event, {{.ID}});"><i class="octicon octicon-smiley"><sup>+</sup></i></a></span>
 					{{if .Editable}}<span class="right-icon"><a href="javascript:" title="Edit" onclick="EditComment({{`edit` | json}}, this);"><span class="octicon octicon-pencil"></span></a></span>{{end}}
 				</div>

@@ -105,6 +105,15 @@ span.right-icon a:hover {
 	border-radius: 2px;
 	margin-top: -2px;
 }
+img.topbar-avatar {
+	border-radius: 2px;
+	width: 18px;
+	height: 18px;
+	vertical-align: top;
+}
+a.topbar-avatar {
+	margin-right: 6px;
+}
 
 input#title-editor {
 	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;

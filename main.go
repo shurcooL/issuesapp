@@ -30,6 +30,7 @@ type Options struct {
 	RepoSpec func(req *http.Request) issues.RepoSpec
 	BaseURI  func(req *http.Request) string
 	HeadPre  template.HTML
+	BodyPre  string // An html/template definition of "body-pre" template.
 
 	// TODO.
 	BaseState func(req *http.Request) BaseState
@@ -43,6 +44,10 @@ type handler struct {
 
 // New returns an issues app http.Handler using given service and options.
 func New(service issues.Service, opt Options) http.Handler {
+	globalHandler = &handler{
+		Options: opt,
+	}
+
 	err := loadTemplates(nil)
 	if err != nil {
 		log.Fatalln("loadTemplates:", err)
@@ -70,10 +75,7 @@ func New(service issues.Service, opt Options) http.Handler {
 	h.Handle("/assets/octicons/", http.StripPrefix("/assets/", fileServer))
 	h.HandleFunc("/debug", debugHandler)
 
-	globalHandler = &handler{
-		Options: opt,
-		Handler: h,
-	}
+	globalHandler.Handler = h
 	return globalHandler
 }
 
@@ -133,6 +135,10 @@ func loadTemplates(currentUser *issues.User) error {
 		},
 	})
 	t, err = vfstemplate.ParseGlob(Assets, t, "/assets/*.tmpl")
+	if err != nil {
+		return err
+	}
+	t, err = t.New("body-pre").Parse(globalHandler.BodyPre) // HACK: This is a temporary experiment.
 	return err
 }
 
