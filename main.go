@@ -129,7 +129,7 @@ func loadTemplates(currentUser *issues.User) error {
 					users += u.Login
 				}
 			}
-			return fmt.Sprintf("%v reacted with %v.", users, reaction.Reaction)
+			return fmt.Sprintf("%v reacted with :%v:.", users, reaction.Reaction)
 		},
 	})
 	t, err = vfstemplate.ParseGlob(Assets, t, "/assets/*.tmpl")

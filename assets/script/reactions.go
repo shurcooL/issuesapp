@@ -225,14 +225,12 @@ func postReaction(emojiID string, commentID uint64) error {
 		return err
 	}
 
-	fmt.Printf("got reply: %v\n", resp.Status)
-
 	switch resp.StatusCode {
 	case http.StatusOK:
 		reactionsContainer := document.GetElementByID(fmt.Sprintf("comment-%v-reactions-container", commentID)).(dom.HTMLElement)
 		reactionsContainer.SetInnerHTML(string(body))
 		return nil
 	default:
-		return fmt.Errorf("did not get acceptable status code: %v", resp.Status)
+		return fmt.Errorf("did not get acceptable status code: %v body: %q", resp.Status, string(body))
 	}
 }
