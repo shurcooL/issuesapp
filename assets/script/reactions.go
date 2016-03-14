@@ -79,7 +79,7 @@ func setupReactionsMenu() {
 		disabled.SetClass("rm-reactions-menu-disabled")
 		signIn := document.CreateElement("div").(*dom.HTMLDivElement)
 		signIn.SetClass("rm-reactions-menu-signin")
-		signIn.SetInnerHTML(`<form method="post" action="/login/github" style="display: inline-block; margin-bottom: 0;"><input type="submit" name="" value="Sign in via GitHub"></form> to react.`)
+		signIn.SetInnerHTML(fmt.Sprintf(`<form method="post" action="/login/github" style="display: inline-block; margin-bottom: 0;"><input type="submit" name="" value="Sign in via GitHub"><input type="hidden" name="return" value="%s"></form> to react.`, state.BaseURI+state.ReqPath))
 		disabled.AppendChild(signIn)
 		container.AppendChild(disabled)
 	}
