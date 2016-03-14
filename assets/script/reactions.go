@@ -29,13 +29,16 @@ func (rm *ReactionsMenu) Show(this dom.HTMLElement, event dom.Event, commentID u
 
 	rm.results.Set("scrollTop", 0)
 	top := float64(dom.GetWindow().ScrollY()) + this.GetBoundingClientRect().Top - rm.menu.GetBoundingClientRect().Height - 10
-	if top < 10 {
-		top = 10
+	if minTop := float64(dom.GetWindow().ScrollY()) + 12; top < minTop {
+		top = minTop
 	}
 	rm.menu.Style().SetProperty("top", fmt.Sprintf("%vpx", top), "")
 	left := float64(dom.GetWindow().ScrollX()) + this.GetBoundingClientRect().Left
 	if maxLeft := float64(dom.GetWindow().InnerWidth()+dom.GetWindow().ScrollX()) - rm.menu.GetBoundingClientRect().Width - 12; left > maxLeft {
 		left = maxLeft
+	}
+	if minLeft := float64(dom.GetWindow().ScrollX()) + 12; left < minLeft {
+		left = minLeft
 	}
 	rm.menu.Style().SetProperty("left", fmt.Sprintf("%vpx", left), "")
 	if rm.authenticatedUser {
