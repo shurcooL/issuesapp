@@ -109,6 +109,28 @@ func loadTemplates(currentUser *issues.User) error {
 			}
 			return false
 		},
+		"reactionTooltip": func(reaction issues.Reaction) string {
+			var users string
+			for i, u := range reaction.Users {
+				if i != 0 {
+					if i < len(reaction.Users)-1 {
+						users += ", "
+					} else {
+						users += " and "
+					}
+				}
+				if currentUser != nil && u.ID == currentUser.ID {
+					if i == 0 {
+						users += "You"
+					} else {
+						users += "you"
+					}
+				} else {
+					users += u.Login
+				}
+			}
+			return fmt.Sprintf("%v reacted with %v.", users, reaction.Reaction)
+		},
 	})
 	t, err = vfstemplate.ParseGlob(Assets, t, "/assets/*.tmpl")
 	return err
