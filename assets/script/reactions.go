@@ -115,8 +115,9 @@ func setupReactionsMenu() {
 	})
 	container.AppendChild(Reactions.results)
 	preview := document.CreateElement("div").(*dom.HTMLDivElement)
+	preview.SetClass("rm-reactions-preview")
+	preview.SetInnerHTML(`<span id="rm-reactions-preview-emoji"><span class="rm-emoji rm-large"></span></span><span id="rm-reactions-preview-label"></span>`)
 	container.AppendChild(preview)
-	preview.SetOuterHTML(`<div class="rm-reactions-preview"><span id="rm-reactions-preview-emoji"></span><span id="rm-reactions-preview-label"></span></div>`)
 
 	updateFilteredResults(Reactions.filter, Reactions.results)
 	Reactions.filter.AddEventListener("input", false, func(dom.Event) {
@@ -193,7 +194,7 @@ func updateSelected(index int) {
 	label := document.GetElementByID("rm-reactions-preview-label").(*dom.HTMLSpanElement)
 	label.SetTextContent(strings.Trim(emojiID, ":"))
 	emoji := document.GetElementByID("rm-reactions-preview-emoji").(*dom.HTMLSpanElement)
-	emoji.SetInnerHTML(`<span class="rm-emoji rm-large" style="background-position: ` + reactions.Position(emojiID) + `;"></span></div>`)
+	emoji.FirstChild().(dom.HTMLElement).Style().SetProperty("background-position", reactions.Position(emojiID), "")
 }
 
 func (rm *ReactionsMenu) ToggleReaction(this dom.HTMLElement, event dom.Event, emojiID string) {
