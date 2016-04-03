@@ -21,9 +21,9 @@ var Reactions ReactionsMenu
 func (rm *ReactionsMenu) Show(this dom.HTMLElement, event dom.Event, commentID uint64) {
 	rm.commentID = commentID
 
-	updateSelected(0)
 	rm.filter.Value = ""
 	rm.filter.Underlying().Call("dispatchEvent", js.Global.Get("CustomEvent").New("input")) // Trigger "input" event listeners.
+	updateSelected(0)
 
 	rm.menu.Style().SetProperty("display", "initial", "")
 
@@ -64,7 +64,6 @@ type ReactionsMenu struct {
 
 func setupReactionsMenu() {
 	Reactions.authenticatedUser = state.CurrentUser != nil
-	//Reactions.authenticatedUser = true
 
 	Reactions.menu = document.CreateElement("div").(*dom.HTMLDivElement)
 	Reactions.menu.SetID("rm-reactions-menu")
