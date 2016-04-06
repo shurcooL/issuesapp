@@ -1,3 +1,3 @@
-//go:generate go run -tags=dev assets_gen.go
+//go:generate vfsgendev -source="github.com/shurcooL/issuesapp".Assets
 
 package issuesapp
