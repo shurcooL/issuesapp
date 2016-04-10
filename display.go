@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/shurcooL/htmlg"
-	"src.sourcegraph.com/apps/tracker/issues"
+	"github.com/shurcooL/issues"
 )
 
 // issueItem represents an issue item for display purposes.

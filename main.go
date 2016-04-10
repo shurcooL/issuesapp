@@ -19,10 +19,10 @@ import (
 	"github.com/shurcooL/go-goon"
 	"github.com/shurcooL/go/gzip_file_server"
 	"github.com/shurcooL/httpfs/html/vfstemplate"
+	"github.com/shurcooL/issues"
 	"github.com/shurcooL/issuesapp/common"
 	"github.com/shurcooL/reactions"
 	"golang.org/x/net/context"
-	"src.sourcegraph.com/apps/tracker/issues"
 )
 
 type Options struct {

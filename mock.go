@@ -6,7 +6,7 @@ import (
 	"path"
 	"time"
 
-	"src.sourcegraph.com/apps/tracker/issues"
+	"github.com/shurcooL/issues"
 )
 
 func mockHandler(w http.ResponseWriter, req *http.Request) {

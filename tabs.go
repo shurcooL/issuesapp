@@ -7,9 +7,9 @@ import (
 	"net/url"
 
 	"github.com/shurcooL/htmlg"
+	"github.com/shurcooL/issues"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
-	"src.sourcegraph.com/apps/tracker/issues"
 )
 
 // TODO: Factor out somehow...

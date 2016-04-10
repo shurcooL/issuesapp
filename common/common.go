@@ -1,6 +1,6 @@
 package common
 
-import "src.sourcegraph.com/apps/tracker/issues"
+import "github.com/shurcooL/issues"
 
 type State struct {
 	BaseURI     string

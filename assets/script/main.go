@@ -15,10 +15,10 @@ import (
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/shurcooL/github_flavored_markdown"
 	"github.com/shurcooL/go/gopherjs_http/jsutil"
+	"github.com/shurcooL/issues"
 	"github.com/shurcooL/issuesapp/common"
 	"github.com/shurcooL/markdownfmt/markdown"
 	"honnef.co/go/js/dom"
-	"src.sourcegraph.com/apps/tracker/issues"
 )
 
 var document = dom.GetWindow().Document().(dom.HTMLDocument)

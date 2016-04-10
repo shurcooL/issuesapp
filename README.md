@@ -20,7 +20,7 @@ go get -u -d -tags=js github.com/shurcooL/issuesapp/...
 Afterwards, you can build and run in development mode, where all assets are always read and processed from disk:
 
 ```bash
-go build -tags=dev something/that/uses/tracker
+go build -tags=dev something/that/uses/issuesapp
 ```
 
 When you're done with development, you should run `go generate` and commit that:
