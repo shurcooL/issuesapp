@@ -1,5 +1,6 @@
 # issuesapp [![Build Status](https://travis-ci.org/shurcooL/issuesapp.svg?branch=master)](https://travis-ci.org/shurcooL/issuesapp) [![GoDoc](https://godoc.org/github.com/shurcooL/issuesapp?status.svg)](https://godoc.org/github.com/shurcooL/issuesapp)
 
+Package issuesapp is a web frontend for an issues service.
 
 Installation
 ------------
