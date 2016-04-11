@@ -1,4 +1,5 @@
-# issuesapp
+# issuesapp [![Build Status](https://travis-ci.org/shurcooL/issuesapp.svg?branch=master)](https://travis-ci.org/shurcooL/issuesapp) [![GoDoc](https://godoc.org/github.com/shurcooL/issuesapp?status.svg)](https://godoc.org/github.com/shurcooL/issuesapp)
+
 
 Installation
 ------------
@@ -32,4 +33,4 @@ go generate github.com/shurcooL/issuesapp/...
 License
 -------
 
-- [MIT License](http://opensource.org/licenses/mit-license.php)
+-	[MIT License](https://opensource.org/licenses/mit-license.php)
