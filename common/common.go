@@ -1,9 +1,9 @@
 package common
 
-import "github.com/shurcooL/issues"
+import "github.com/shurcooL/users"
 
 type State struct {
 	BaseURI     string
 	ReqPath     string
-	CurrentUser *issues.User
+	CurrentUser *users.User
 }

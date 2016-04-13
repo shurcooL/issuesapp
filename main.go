@@ -22,6 +22,7 @@ import (
 	"github.com/shurcooL/issues"
 	"github.com/shurcooL/issuesapp/common"
 	"github.com/shurcooL/reactions"
+	"github.com/shurcooL/users"
 	"golang.org/x/net/context"
 )
 
@@ -42,8 +43,14 @@ type handler struct {
 	Options
 }
 
-// New returns an issues app http.Handler using given service and options.
-func New(service issues.Service, opt Options) http.Handler {
+// TODO: Get rid of globals.
+var (
+	is issues.Service
+	us users.Service
+)
+
+// New returns an issues app http.Handler using given services and options.
+func New(service issues.Service, users users.Service, opt Options) http.Handler {
 	globalHandler = &handler{
 		Options: opt,
 	}
@@ -55,6 +62,7 @@ func New(service issues.Service, opt Options) http.Handler {
 
 	// TODO: Move into handler?
 	is = service
+	us = users
 
 	h := http.NewServeMux()
 	h.HandleFunc("/mock/", mockHandler)
@@ -84,7 +92,7 @@ var globalHandler *handler
 
 var t *template.Template
 
-func loadTemplates(currentUser *issues.User) error {
+func loadTemplates(currentUser *users.User) error {
 	var err error
 	t = template.New("").Funcs(template.FuncMap{
 		"dump": func(v interface{}) string { return goon.Sdump(v) },
@@ -100,7 +108,7 @@ func loadTemplates(currentUser *issues.User) error {
 		"gfm":              func(s string) template.HTML { return template.HTML(github_flavored_markdown.Markdown([]byte(s))) },
 		"reactionPosition": func(emojiID issues.EmojiID) string { return reactions.Position(":" + string(emojiID) + ":") },
 		// THINK.
-		"containsCurrentUser": func(users []issues.User) bool {
+		"containsCurrentUser": func(users []users.User) bool {
 			if currentUser == nil {
 				return false
 			}
@@ -165,10 +173,14 @@ func baseState(req *http.Request) (BaseState, error) {
 	b.repoSpec = globalHandler.RepoSpec(req)
 	b.HeadPre = globalHandler.HeadPre
 
-	if u, err := is.CurrentUser(b.ctx); err != nil {
+	if user, err := us.GetAuthenticated(b.ctx); err != nil {
 		return BaseState{}, err
-	} else {
-		b.CurrentUser = u
+	} else if user != nil {
+		user, err := us.Get(b.ctx, *user)
+		if err != nil {
+			return BaseState{}, err
+		}
+		b.CurrentUser = &user
 	}
 
 	return b, nil
@@ -232,8 +244,6 @@ func (s state) Items() ([]issueItem, error) {
 	sort.Sort(byCreatedAtID(items))
 	return items, nil
 }
-
-var is issues.Service
 
 func issuesHandler(w http.ResponseWriter, req *http.Request) {
 	if err := loadTemplates(nil); err != nil {

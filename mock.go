@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/shurcooL/issues"
+	"github.com/shurcooL/users"
 )
 
 func mockHandler(w http.ResponseWriter, req *http.Request) {
@@ -66,7 +67,7 @@ func (s mockState) Event() issues.Event {
 	}
 }
 
-var mockUser = issues.User{
+var mockUser = users.User{
 	Login:     "shurcooL",
 	AvatarURL: "https://avatars.githubusercontent.com/u/1924134?v=3&s=96",
 	HTMLURL:   "https://github.com/shurcooL",
