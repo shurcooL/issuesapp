@@ -175,11 +175,7 @@ func baseState(req *http.Request) (BaseState, error) {
 
 	if user, err := us.GetAuthenticated(b.ctx); err != nil {
 		return BaseState{}, err
-	} else if user != nil {
-		user, err := us.Get(b.ctx, *user)
-		if err != nil {
-			return BaseState{}, err
-		}
+	} else if user.ID != 0 {
 		b.CurrentUser = &user
 	}
 
