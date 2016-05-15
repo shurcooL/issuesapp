@@ -50,19 +50,19 @@ var (
 )
 
 // New returns an issues app http.Handler using given services and options.
-func New(service issues.Service, users users.Service, opt Options) http.Handler {
+func New(service issues.Service, usersService users.Service, opt Options) http.Handler {
 	globalHandler = &handler{
 		Options: opt,
 	}
 
-	err := loadTemplates(nil)
+	err := loadTemplates(users.User{})
 	if err != nil {
 		log.Fatalln("loadTemplates:", err)
 	}
 
 	// TODO: Move into handler?
 	is = service
-	us = users
+	us = usersService
 
 	h := http.NewServeMux()
 	h.HandleFunc("/mock/", mockHandler)
@@ -92,7 +92,7 @@ var globalHandler *handler
 
 var t *template.Template
 
-func loadTemplates(currentUser *users.User) error {
+func loadTemplates(currentUser users.User) error {
 	var err error
 	t = template.New("").Funcs(template.FuncMap{
 		"dump": func(v interface{}) string { return goon.Sdump(v) },
@@ -106,10 +106,10 @@ func loadTemplates(currentUser *users.User) error {
 		},
 		"reltime":          humanize.Time,
 		"gfm":              func(s string) template.HTML { return template.HTML(github_flavored_markdown.Markdown([]byte(s))) },
-		"reactionPosition": func(emojiID issues.EmojiID) string { return reactions.Position(":" + string(emojiID) + ":") },
+		"reactionPosition": func(emojiID reactions.EmojiID) string { return reactions.Position(":" + string(emojiID) + ":") },
 		// THINK.
 		"containsCurrentUser": func(users []users.User) bool {
-			if currentUser == nil {
+			if currentUser.ID == 0 {
 				return false
 			}
 			for _, u := range users {
@@ -119,7 +119,7 @@ func loadTemplates(currentUser *users.User) error {
 			}
 			return false
 		},
-		"reactionTooltip": func(reaction issues.Reaction) string {
+		"reactionTooltip": func(reaction reactions.Reaction) string {
 			var users string
 			for i, u := range reaction.Users {
 				if i != 0 {
@@ -129,7 +129,7 @@ func loadTemplates(currentUser *users.User) error {
 						users += " and "
 					}
 				}
-				if currentUser != nil && u.ID == currentUser.ID {
+				if currentUser.ID != 0 && u.ID == currentUser.ID {
 					if i == 0 {
 						users += "You"
 					} else {
@@ -139,6 +139,8 @@ func loadTemplates(currentUser *users.User) error {
 					users += u.Login
 				}
 			}
+			// TODO: Handle when there are too many users and their details are left out by backend.
+			//       Count them and add "and N others" here.
 			return fmt.Sprintf("%v reacted with :%v:.", users, reaction.Reaction)
 		},
 	})
@@ -175,8 +177,8 @@ func baseState(req *http.Request) (BaseState, error) {
 
 	if user, err := us.GetAuthenticated(b.ctx); err != nil {
 		return BaseState{}, err
-	} else if user.ID != 0 {
-		b.CurrentUser = &user
+	} else {
+		b.CurrentUser = user
 	}
 
 	return b, nil
@@ -242,7 +244,7 @@ func (s state) Items() ([]issueItem, error) {
 }
 
 func issuesHandler(w http.ResponseWriter, req *http.Request) {
-	if err := loadTemplates(nil); err != nil {
+	if err := loadTemplates(users.User{}); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -302,7 +304,7 @@ func debugHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func createIssueHandler(w http.ResponseWriter, req *http.Request) {
-	if err := loadTemplates(nil); err != nil {
+	if err := loadTemplates(users.User{}); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -314,7 +316,7 @@ func createIssueHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if baseState.CurrentUser == nil {
+	if baseState.CurrentUser.ID == 0 {
 		http.Error(w, "this page requires an authenticated user", http.StatusUnauthorized)
 		return
 	}
@@ -481,7 +483,7 @@ func postToggleReactionHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	repoSpec := globalHandler.RepoSpec(req)
 
-	reaction := issues.EmojiID(req.PostForm.Get("reaction"))
+	reaction := reactions.EmojiID(req.PostForm.Get("reaction"))
 	cr := issues.CommentRequest{
 		ID:       uint64(mustAtoi(vars["commentID"])),
 		Reaction: &reaction,

@@ -63,7 +63,7 @@ type ReactionsMenu struct {
 }
 
 func setupReactionsMenu() {
-	Reactions.authenticatedUser = state.CurrentUser != nil
+	Reactions.authenticatedUser = state.CurrentUser.ID != 0
 
 	Reactions.menu = document.CreateElement("div").(*dom.HTMLDivElement)
 	Reactions.menu.SetID("rm-reactions-menu")

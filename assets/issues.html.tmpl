@@ -26,7 +26,7 @@
 {{end}}
 
 {{define "create-issue"}}
-	{{if .CurrentUser}}
+	{{if .CurrentUser.ID}}
 		{{/* HACK, TODO: Factor this out. */}}
 		{{if and (eq .CurrentUser.ID 1924134) (eq .CurrentUser.Domain "github.com")}}
 			<div style="text-align: right;"><button class="btn btn-success btn-small" onclick="window.location = '{{.BaseURI}}/new';">Create Issue</button></div>

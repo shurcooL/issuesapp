@@ -10,7 +10,7 @@
 </html>
 
 {{define "new-comment"}}
-{{if .CurrentUser}}
+{{if .CurrentUser.ID}}
 	<div id="new-comment-container" class="edit-container list-entry" style="display: flex;">
 		<div>
 			<a href="{{.CurrentUser.HTMLURL}}" target="_blank" tabindex=-1>
