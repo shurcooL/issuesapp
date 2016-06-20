@@ -80,7 +80,7 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	h.Handle("/", r)
 	fileServer := gzip_file_server.New(Assets)
 	h.Handle("/assets/", fileServer)
-	h.Handle("/assets/octicons/", http.StripPrefix("/assets/", fileServer))
+	h.Handle("/assets/octicons/", http.StripPrefix("/assets", fileServer))
 	h.HandleFunc("/debug", debugHandler)
 
 	globalHandler.Handler = h
