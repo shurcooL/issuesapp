@@ -309,6 +309,7 @@ div#rm-reactions-menu {
 	border-radius: 6px;
 	padding: 8px;
 	width: 270px;
+	box-sizing: content-box;
 }
 input.rm-reactions-filter {
 	width: 100%;
@@ -320,6 +321,7 @@ input.rm-reactions-filter {
 	border: 1px solid #ccc;
 	border-radius: 15px;
 	margin-bottom: 8px;
+	box-sizing: border-box;
 }
 div.rm-reactions-results {
 	overflow: scroll;
