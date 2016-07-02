@@ -75,7 +75,7 @@ func (e event) Text() template.HTML {
 	case issues.Renamed:
 		return htmlg.Render(htmlg.Text("changed the title from "), htmlg.Strong(e.Event.Rename.From), htmlg.Text(" to "), htmlg.Strong(e.Event.Rename.To))
 	default:
-		panic("unexpected event")
+		return htmlg.Render(htmlg.Text(string(e.Event.Type)))
 	}
 }
 
@@ -88,6 +88,6 @@ func (e event) Octicon() string {
 	case issues.Renamed:
 		return "octicon-pencil"
 	default:
-		panic("unexpected event")
+		return "octicon-primitive-dot"
 	}
 }
