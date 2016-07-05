@@ -77,8 +77,12 @@ func setupIssueToggleButton() {
 	}
 }
 
-func postJSON(url string, body []byte) (*http.Response, error) {
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+func postJSON(url string, v interface{}) (*http.Response, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
 	if err != nil {
 		return nil, err
 	}
@@ -96,20 +100,15 @@ func CreateNewIssue() {
 		return
 	}
 	fmted, _ := markdown.Process("", []byte(commentEditor.Value), nil)
-	body := string(bytes.TrimSpace(fmted))
-
-	value, err := json.Marshal(issues.Issue{
+	newIssue := issues.Issue{
 		Title: title,
 		Comment: issues.Comment{
-			Body: body,
+			Body: string(bytes.TrimSpace(fmted)),
 		},
-	})
-	if err != nil {
-		panic(err)
 	}
 
 	go func() {
-		resp, err := postJSON("new", value)
+		resp, err := postJSON("new", newIssue)
 		if err != nil {
 			log.Println(err)
 			return
