@@ -17,8 +17,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/shurcooL/github_flavored_markdown"
 	"github.com/shurcooL/go-goon"
-	"github.com/shurcooL/go/gzip_file_server"
 	"github.com/shurcooL/httpfs/html/vfstemplate"
+	"github.com/shurcooL/httpgzip"
 	"github.com/shurcooL/issues"
 	"github.com/shurcooL/issuesapp/common"
 	"github.com/shurcooL/reactions"
@@ -78,7 +78,7 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	r.HandleFunc("/new", createIssueHandler).Methods("GET")
 	r.HandleFunc("/new", postCreateIssueHandler).Methods("POST")
 	h.Handle("/", r)
-	fileServer := gzip_file_server.New(Assets)
+	fileServer := httpgzip.FileServer(Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
 	h.Handle("/assets/", fileServer)
 	h.Handle("/assets/octicons/", http.StripPrefix("/assets", fileServer))
 	h.HandleFunc("/debug", debugHandler)
