@@ -59,26 +59,15 @@ div.multilist-entry:not(:nth-child(0n+2)) {
 	border-top-width: 1px;
 }
 
-.markdown-body > *:first-child {
-	margin-top: 0;
+/* Needed in issuesapp only because of something in parent containers... */
+.markdown-body {
+	word-break: break-word;
 }
-.markdown-body > *:last-child {
-	margin-bottom: 0;
-}
-.markdown-body blockquote > *:first-child {
-	margin-top: 0;
-}
-.markdown-body blockquote > *:last-child {
-	margin-bottom: 0;
-}
-.markdown-body blockquote {
-	padding-left: 12px;
-	color: #777;
-	border-left: 4px solid #ddd;
-}
-.markdown-body img {
-	max-width: 100%;
-	vertical-align: initial;
+
+/* GFM style overrides. */
+.markdown-body {
+	font-size: 14px;
+	line-height: 1.2;
 }
 
 span.content {

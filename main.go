@@ -81,6 +81,7 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	fileServer := httpgzip.FileServer(Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
 	h.Handle("/assets/", fileServer)
 	h.Handle("/assets/octicons/", http.StripPrefix("/assets", fileServer))
+	h.Handle("/assets/gfm/", http.StripPrefix("/assets", fileServer))
 	h.HandleFunc("/debug", debugHandler)
 
 	globalHandler.Handler = h
