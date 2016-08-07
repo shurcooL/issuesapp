@@ -30,6 +30,7 @@
 				<div class="comment-preview markdown-body" style="padding: 11px 11px 10px 11px; min-height: 120px; box-sizing: border-box; border-bottom: 1px solid #eee; display: none;"></div>
 				<div style="text-align: right; margin-top: 10px;">
 					<button class="btn btn-success btn-small" onclick="PostComment();" tabindex=1>Comment</button>
+					{{/* TODO: This causes an extra issuesService.Get()... Is it avoidable? */}}
 					{{$issue := .Issue}}
 					{{if $issue.Editable}}{{template "toggle-button" (print $issue.State)}}{{end}}
 				</div>
