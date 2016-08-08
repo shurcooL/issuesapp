@@ -313,7 +313,7 @@ input.rm-reactions-filter {
 	box-sizing: border-box;
 }
 div.rm-reactions-results {
-	overflow: scroll;
+	overflow-y: scroll;
 	height: 300px;
 	cursor: pointer;
 }
