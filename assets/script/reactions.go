@@ -27,6 +27,12 @@ func (rm *ReactionsMenu) Show(this dom.HTMLElement, event dom.Event, commentID u
 
 	rm.menu.Style().SetProperty("display", "initial", "")
 
+	// Reactions.menu aims to have 270px client width. Due to optional scrollbars
+	// taking up some of that space, we may need to compensate and increase width.
+	if scrollbarWidth := Reactions.results.OffsetWidth() - Reactions.results.Get("clientWidth").Float(); scrollbarWidth > 0 {
+		Reactions.menu.Style().SetProperty("width", fmt.Sprintf("%fpx", 270+scrollbarWidth+1), "")
+	}
+
 	rm.results.Set("scrollTop", 0)
 	top := float64(dom.GetWindow().ScrollY()) + this.GetBoundingClientRect().Top - rm.menu.GetBoundingClientRect().Height - 10
 	if minTop := float64(dom.GetWindow().ScrollY()) + 12; top < minTop {
@@ -97,6 +103,9 @@ func setupReactionsMenu() {
 	Reactions.results.AddEventListener("click", false, func(event dom.Event) {
 		me := event.(*dom.MouseEvent)
 		x := (me.ClientX - int(Reactions.results.GetBoundingClientRect().Left) + Reactions.results.Underlying().Get("scrollLeft").Int()) / 30
+		if x >= 9 {
+			return // Out of bounds to the right, likely because of scrollbar.
+		}
 		y := (me.ClientY - int(Reactions.results.GetBoundingClientRect().Top) + Reactions.results.Underlying().Get("scrollTop").Int()) / 30
 		i := y*9 + x
 		if i < 0 || i >= len(filtered) {
@@ -126,6 +135,9 @@ func setupReactionsMenu() {
 	Reactions.results.AddEventListener("mousemove", false, func(event dom.Event) {
 		me := event.(*dom.MouseEvent)
 		x := (me.ClientX - int(Reactions.results.GetBoundingClientRect().Left) + Reactions.results.Underlying().Get("scrollLeft").Int()) / 30
+		if x >= 9 {
+			return // Out of bounds to the right, likely because of scrollbar.
+		}
 		y := (me.ClientY - int(Reactions.results.GetBoundingClientRect().Top) + Reactions.results.Underlying().Get("scrollTop").Int()) / 30
 		i := y*9 + x
 		updateSelected(i)
