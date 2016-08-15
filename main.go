@@ -50,6 +50,7 @@ var (
 )
 
 // New returns an issues app http.Handler using given services and options.
+// If usersService is nil, then there is no way to have an authenticated user.
 func New(service issues.Service, usersService users.Service, opt Options) http.Handler {
 	globalHandler = &handler{
 		Options: opt,
@@ -175,10 +176,13 @@ func baseState(req *http.Request) (BaseState, error) {
 	b.repoSpec = globalHandler.RepoSpec(req)
 	b.HeadPre = globalHandler.HeadPre
 
-	if user, err := us.GetAuthenticated(b.ctx); err != nil {
-		return BaseState{}, err
-	} else {
+	if us == nil {
+		// No user service provided, so there can never be an authenticated user.
+		b.CurrentUser = users.User{}
+	} else if user, err := us.GetAuthenticated(b.ctx); err == nil {
 		b.CurrentUser = user
+	} else {
+		return BaseState{}, err
 	}
 
 	return b, nil
