@@ -82,7 +82,6 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	h.Handle("/assets/", fileServer)
 	h.Handle("/assets/octicons/", http.StripPrefix("/assets", fileServer))
 	h.Handle("/assets/gfm/", http.StripPrefix("/assets", fileServer))
-	h.HandleFunc("/debug", debugHandler)
 
 	globalHandler.Handler = h
 	return globalHandler
@@ -290,18 +289,6 @@ func issueHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-func debugHandler(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("debugHandler:", req.URL.Path)
-
-	/*ctx := putil.Context(req)
-	if repoRevSpec, ok := pctx.RepoRevSpec(ctx); ok {
-		goon.DumpExpr(issues.RepoSpec{URI: repoRevSpec.URI})
-	}
-	goon.DumpExpr(pctx.RepoRevSpec(ctx))*/
-
-	//io.WriteString(w, req.PostForm.Get("value"))
 }
 
 func createIssueHandler(w http.ResponseWriter, req *http.Request) {
