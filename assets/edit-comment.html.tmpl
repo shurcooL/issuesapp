@@ -26,7 +26,7 @@
 			<span class="gray"><span style="margin-right: 6px;" class="octicon octicon-markdown"></span>Markdown</span>
 		</div>
 		<div class="list-entry-body">
-			<textarea class="comment-editor" placeholder="Leave a comment." onpaste="PasteHandler(event);" data-id="{{.ID}}" data-raw="{{.Body}}" tabindex=1></textarea>
+			<textarea class="comment-editor" placeholder="Leave a comment." onpaste="PasteHandler(event);" onkeydown="TabSupportKeyDownHandler(this, event);" data-id="{{.ID}}" data-raw="{{.Body}}" tabindex=1></textarea>
 			<div class="comment-preview markdown-body" style="padding: 11px 11px 10px 11px; min-height: 120px; box-sizing: border-box; border-bottom: 1px solid #eee; display: none;"></div>
 			<div style="text-align: right; margin-top: 10px;">
 				<button class="btn btn-success btn-small" onclick="EditComment({{`update` | json}}, this);" tabindex=1>Update comment</button>

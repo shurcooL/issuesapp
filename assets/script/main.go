@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/shurcooL/frontend/tabsupport"
 	"github.com/shurcooL/github_flavored_markdown"
 	"github.com/shurcooL/go/gopherjs_http/jsutil"
 	"github.com/shurcooL/issues"
@@ -35,6 +36,7 @@ func main() {
 	js.Global.Set("EditComment", jsutil.Wrap(EditComment))
 	js.Global.Set("ShowReactionMenu", jsutil.Wrap(Reactions.Show))
 	js.Global.Set("ToggleReaction", jsutil.Wrap(Reactions.ToggleReaction))
+	js.Global.Set("TabSupportKeyDownHandler", jsutil.Wrap(tabsupport.KeyDownHandler))
 
 	stateJSON := js.Global.Get("State").String()
 	err := json.Unmarshal([]byte(stateJSON), &state)
