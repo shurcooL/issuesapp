@@ -2,6 +2,7 @@ package issuesapp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -23,7 +24,6 @@ import (
 	"github.com/shurcooL/issuesapp/common"
 	"github.com/shurcooL/reactions"
 	"github.com/shurcooL/users"
-	"golang.org/x/net/context"
 )
 
 type Options struct {
