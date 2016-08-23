@@ -27,7 +27,6 @@ import (
 )
 
 type Options struct {
-	Context  func(req *http.Request) context.Context
 	RepoSpec func(req *http.Request) issues.RepoSpec
 	BaseURI  func(req *http.Request) string
 	HeadPre  template.HTML
@@ -170,7 +169,7 @@ type BaseState struct {
 
 func baseState(req *http.Request) (BaseState, error) {
 	b := globalHandler.BaseState(req)
-	b.ctx = globalHandler.Context(req)
+	b.ctx = req.Context()
 	b.req = req
 	b.vars = mux.Vars(req)
 	b.repoSpec = globalHandler.RepoSpec(req)
@@ -324,7 +323,6 @@ func createIssueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
-	ctx := globalHandler.Context(req)
 	baseURI := globalHandler.BaseURI(req)
 	repoSpec := globalHandler.RepoSpec(req)
 
@@ -336,7 +334,7 @@ func postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	issue, err = is.Create(ctx, repoSpec, issue)
+	issue, err = is.Create(req.Context(), repoSpec, issue)
 	if err != nil {
 		log.Println("is.Create:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -353,7 +351,6 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ctx := globalHandler.Context(req)
 	vars := mux.Vars(req)
 	repoSpec := globalHandler.RepoSpec(req)
 
@@ -365,7 +362,7 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	issue, events, err := is.Edit(ctx, repoSpec, uint64(mustAtoi(vars["id"])), ir)
+	issue, events, err := is.Edit(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), ir)
 	if err != nil {
 		log.Println("is.Edit:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -415,7 +412,6 @@ func postCommentHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ctx := globalHandler.Context(req)
 	vars := mux.Vars(req)
 	repoSpec := globalHandler.RepoSpec(req)
 
@@ -424,7 +420,7 @@ func postCommentHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	issueID := uint64(mustAtoi(vars["id"]))
-	comment, err := is.CreateComment(ctx, repoSpec, issueID, comment)
+	comment, err := is.CreateComment(req.Context(), repoSpec, issueID, comment)
 	if err != nil {
 		log.Println("is.CreateComment:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -446,7 +442,6 @@ func postEditCommentHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ctx := globalHandler.Context(req)
 	vars := mux.Vars(req)
 	repoSpec := globalHandler.RepoSpec(req)
 
@@ -456,7 +451,7 @@ func postEditCommentHandler(w http.ResponseWriter, req *http.Request) {
 		Body: &body,
 	}
 
-	_, err := is.EditComment(ctx, repoSpec, uint64(mustAtoi(vars["id"])), cr)
+	_, err := is.EditComment(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), cr)
 	if err != nil {
 		log.Println("is.EditComment:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -471,7 +466,6 @@ func postToggleReactionHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ctx := globalHandler.Context(req)
 	vars := mux.Vars(req)
 	repoSpec := globalHandler.RepoSpec(req)
 
@@ -481,7 +475,7 @@ func postToggleReactionHandler(w http.ResponseWriter, req *http.Request) {
 		Reaction: &reaction,
 	}
 
-	comment, err := is.EditComment(ctx, repoSpec, uint64(mustAtoi(vars["id"])), cr)
+	comment, err := is.EditComment(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), cr)
 	if os.IsPermission(err) { // TODO: Move this to a higher level (and upate all other similar code too).
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
