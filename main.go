@@ -39,60 +39,52 @@ type Options struct {
 type handler struct {
 	http.Handler
 
-	Options
-}
-
-// TODO: Get rid of globals.
-var (
 	is issues.Service
 	us users.Service
-)
+
+	Options
+}
 
 // New returns an issues app http.Handler using given services and options.
 // If usersService is nil, then there is no way to have an authenticated user.
 func New(service issues.Service, usersService users.Service, opt Options) http.Handler {
-	globalHandler = &handler{
+	handler := &handler{
+		is:      service,
+		us:      usersService,
 		Options: opt,
 	}
 
-	err := loadTemplates(users.User{})
+	err := handler.loadTemplates(users.User{})
 	if err != nil {
 		log.Fatalln("loadTemplates:", err)
 	}
 
-	// TODO: Move into handler?
-	is = service
-	us = usersService
-
 	h := http.NewServeMux()
-	h.HandleFunc("/mock/", mockHandler)
+	h.HandleFunc("/mock/", handler.mockHandler)
 	r := mux.NewRouter()
 	// TODO: Make redirection work.
 	//r.StrictSlash(true) // THINK: Can't use this due to redirect not taking baseURI into account.
-	r.HandleFunc("/", issuesHandler).Methods("GET")
-	r.HandleFunc("/{id:[0-9]+}", issueHandler).Methods("GET")
-	r.HandleFunc("/{id:[0-9]+}/edit", postEditIssueHandler).Methods("POST")
-	r.HandleFunc("/{id:[0-9]+}/comment", postCommentHandler).Methods("POST")
-	r.HandleFunc("/{id:[0-9]+}/comment/{commentID:[0-9]+}", postEditCommentHandler).Methods("POST")
-	r.HandleFunc("/{id:[0-9]+}/comment/{commentID:[0-9]+}/react", postToggleReactionHandler).Methods("POST")
-	r.HandleFunc("/new", createIssueHandler).Methods("GET")
-	r.HandleFunc("/new", postCreateIssueHandler).Methods("POST")
+	r.HandleFunc("/", handler.issuesHandler).Methods("GET")
+	r.HandleFunc("/{id:[0-9]+}", handler.issueHandler).Methods("GET")
+	r.HandleFunc("/{id:[0-9]+}/edit", handler.postEditIssueHandler).Methods("POST")
+	r.HandleFunc("/{id:[0-9]+}/comment", handler.postCommentHandler).Methods("POST")
+	r.HandleFunc("/{id:[0-9]+}/comment/{commentID:[0-9]+}", handler.postEditCommentHandler).Methods("POST")
+	r.HandleFunc("/{id:[0-9]+}/comment/{commentID:[0-9]+}/react", handler.postToggleReactionHandler).Methods("POST")
+	r.HandleFunc("/new", handler.createIssueHandler).Methods("GET")
+	r.HandleFunc("/new", handler.postCreateIssueHandler).Methods("POST")
 	h.Handle("/", r)
 	fileServer := httpgzip.FileServer(Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
 	h.Handle("/assets/", fileServer)
 	h.Handle("/assets/octicons/", http.StripPrefix("/assets", fileServer))
 	h.Handle("/assets/gfm/", http.StripPrefix("/assets", fileServer))
 
-	globalHandler.Handler = h
-	return globalHandler
+	handler.Handler = h
+	return handler
 }
-
-// TODO: Refactor to avoid global.
-var globalHandler *handler
 
 var t *template.Template
 
-func loadTemplates(currentUser users.User) error {
+func (h *handler) loadTemplates(currentUser users.User) error {
 	var err error
 	t = template.New("").Funcs(template.FuncMap{
 		"dump": func(v interface{}) string { return goon.Sdump(v) },
@@ -148,12 +140,8 @@ func loadTemplates(currentUser users.User) error {
 	if err != nil {
 		return err
 	}
-	t, err = t.New("body-pre").Parse(globalHandler.BodyPre) // HACK: This is a temporary experiment.
+	t, err = t.New("body-pre").Parse(h.BodyPre) // HACK: This is a temporary experiment.
 	return err
-}
-
-type state struct {
-	BaseState
 }
 
 type BaseState struct {
@@ -164,27 +152,35 @@ type BaseState struct {
 	repoSpec issues.RepoSpec
 	HeadPre  template.HTML
 
+	is issues.Service
+
 	common.State
 }
 
-func baseState(req *http.Request) (BaseState, error) {
-	b := globalHandler.BaseState(req)
+func (h *handler) baseState(req *http.Request) (BaseState, error) {
+	b := h.BaseState(req)
 	b.ctx = req.Context()
 	b.req = req
 	b.vars = mux.Vars(req)
-	b.repoSpec = globalHandler.RepoSpec(req)
-	b.HeadPre = globalHandler.HeadPre
+	b.repoSpec = h.RepoSpec(req)
+	b.HeadPre = h.HeadPre
 
-	if us == nil {
+	b.is = h.is
+
+	if h.us == nil {
 		// No user service provided, so there can never be an authenticated user.
 		b.CurrentUser = users.User{}
-	} else if user, err := us.GetAuthenticated(b.ctx); err == nil {
+	} else if user, err := h.us.GetAuthenticated(b.ctx); err == nil {
 		b.CurrentUser = user
 	} else {
 		return BaseState{}, err
 	}
 
 	return b, nil
+}
+
+type state struct {
+	BaseState
 }
 
 func (s state) Tab() (issues.State, error) {
@@ -203,15 +199,15 @@ func (s state) Issues() ([]issues.Issue, error) {
 	case string(issues.ClosedState):
 		opt.State = issues.StateFilter(issues.ClosedState)
 	}
-	return is.List(s.ctx, s.repoSpec, opt)
+	return s.is.List(s.ctx, s.repoSpec, opt)
 }
 
 func (s state) OpenCount() (uint64, error) {
-	return is.Count(s.ctx, s.repoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
+	return s.is.Count(s.ctx, s.repoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
 }
 
 func (s state) ClosedCount() (uint64, error) {
-	return is.Count(s.ctx, s.repoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
+	return s.is.Count(s.ctx, s.repoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
 }
 
 func mustAtoi(s string) int {
@@ -223,15 +219,15 @@ func mustAtoi(s string) int {
 }
 
 func (s state) Issue() (issues.Issue, error) {
-	return is.Get(s.ctx, s.repoSpec, uint64(mustAtoi(s.vars["id"])))
+	return s.is.Get(s.ctx, s.repoSpec, uint64(mustAtoi(s.vars["id"])))
 }
 
 func (s state) Items() ([]issueItem, error) {
-	cs, err := is.ListComments(s.ctx, s.repoSpec, uint64(mustAtoi(s.vars["id"])), nil)
+	cs, err := s.is.ListComments(s.ctx, s.repoSpec, uint64(mustAtoi(s.vars["id"])), nil)
 	if err != nil {
 		return nil, err
 	}
-	es, err := is.ListEvents(s.ctx, s.repoSpec, uint64(mustAtoi(s.vars["id"])), nil)
+	es, err := s.is.ListEvents(s.ctx, s.repoSpec, uint64(mustAtoi(s.vars["id"])), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -246,14 +242,14 @@ func (s state) Items() ([]issueItem, error) {
 	return items, nil
 }
 
-func issuesHandler(w http.ResponseWriter, req *http.Request) {
-	if err := loadTemplates(users.User{}); err != nil {
+func (h *handler) issuesHandler(w http.ResponseWriter, req *http.Request) {
+	if err := h.loadTemplates(users.User{}); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	baseState, err := baseState(req)
+	baseState, err := h.baseState(req)
 	if err != nil {
 		log.Println("baseState:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -270,15 +266,15 @@ func issuesHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func issueHandler(w http.ResponseWriter, req *http.Request) {
-	baseState, err := baseState(req)
+func (h *handler) issueHandler(w http.ResponseWriter, req *http.Request) {
+	baseState, err := h.baseState(req)
 	if err != nil {
 		log.Println("baseState:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// THINK.
-	if err := loadTemplates(baseState.CurrentUser); err != nil {
+	if err := h.loadTemplates(baseState.CurrentUser); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -294,14 +290,14 @@ func issueHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func createIssueHandler(w http.ResponseWriter, req *http.Request) {
-	if err := loadTemplates(users.User{}); err != nil {
+func (h *handler) createIssueHandler(w http.ResponseWriter, req *http.Request) {
+	if err := h.loadTemplates(users.User{}); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	baseState, err := baseState(req)
+	baseState, err := h.baseState(req)
 	if err != nil {
 		log.Println("baseState:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -322,9 +318,9 @@ func createIssueHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
-	baseURI := globalHandler.BaseURI(req)
-	repoSpec := globalHandler.RepoSpec(req)
+func (h *handler) postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
+	baseURI := h.BaseURI(req)
+	repoSpec := h.RepoSpec(req)
 
 	var issue issues.Issue
 	err := json.NewDecoder(req.Body).Decode(&issue)
@@ -334,7 +330,7 @@ func postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	issue, err = is.Create(req.Context(), repoSpec, issue)
+	issue, err = h.is.Create(req.Context(), repoSpec, issue)
 	if err != nil {
 		log.Println("is.Create:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -344,7 +340,7 @@ func postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "%s/%d", baseURI, issue.ID)
 }
 
-func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 	if err := req.ParseForm(); err != nil {
 		log.Println("req.ParseForm:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -352,7 +348,7 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	repoSpec := globalHandler.RepoSpec(req)
+	repoSpec := h.RepoSpec(req)
 
 	var ir issues.IssueRequest
 	err := json.Unmarshal([]byte(req.PostForm.Get("value")), &ir)
@@ -362,7 +358,7 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	issue, events, err := is.Edit(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), ir)
+	issue, events, err := h.is.Edit(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), ir)
 	if err != nil {
 		log.Println("is.Edit:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -405,7 +401,7 @@ func postEditIssueHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func postCommentHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) postCommentHandler(w http.ResponseWriter, req *http.Request) {
 	if err := req.ParseForm(); err != nil {
 		log.Println("req.ParseForm:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -413,14 +409,14 @@ func postCommentHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	repoSpec := globalHandler.RepoSpec(req)
+	repoSpec := h.RepoSpec(req)
 
 	comment := issues.Comment{
 		Body: req.PostForm.Get("value"),
 	}
 
 	issueID := uint64(mustAtoi(vars["id"]))
-	comment, err := is.CreateComment(req.Context(), repoSpec, issueID, comment)
+	comment, err := h.is.CreateComment(req.Context(), repoSpec, issueID, comment)
 	if err != nil {
 		log.Println("is.CreateComment:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -435,7 +431,7 @@ func postCommentHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func postEditCommentHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) postEditCommentHandler(w http.ResponseWriter, req *http.Request) {
 	if err := req.ParseForm(); err != nil {
 		log.Println("req.ParseForm:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -443,7 +439,7 @@ func postEditCommentHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	repoSpec := globalHandler.RepoSpec(req)
+	repoSpec := h.RepoSpec(req)
 
 	body := req.PostForm.Get("value")
 	cr := issues.CommentRequest{
@@ -451,7 +447,7 @@ func postEditCommentHandler(w http.ResponseWriter, req *http.Request) {
 		Body: &body,
 	}
 
-	_, err := is.EditComment(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), cr)
+	_, err := h.is.EditComment(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), cr)
 	if err != nil {
 		log.Println("is.EditComment:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -459,7 +455,7 @@ func postEditCommentHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func postToggleReactionHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) postToggleReactionHandler(w http.ResponseWriter, req *http.Request) {
 	if err := req.ParseForm(); err != nil {
 		log.Println("req.ParseForm:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -467,7 +463,7 @@ func postToggleReactionHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	repoSpec := globalHandler.RepoSpec(req)
+	repoSpec := h.RepoSpec(req)
 
 	reaction := reactions.EmojiID(req.PostForm.Get("reaction"))
 	cr := issues.CommentRequest{
@@ -475,7 +471,7 @@ func postToggleReactionHandler(w http.ResponseWriter, req *http.Request) {
 		Reaction: &reaction,
 	}
 
-	comment, err := is.EditComment(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), cr)
+	comment, err := h.is.EditComment(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), cr)
 	if os.IsPermission(err) { // TODO: Move this to a higher level (and upate all other similar code too).
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
