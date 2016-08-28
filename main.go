@@ -20,6 +20,7 @@ import (
 	"github.com/shurcooL/httpfs/html/vfstemplate"
 	"github.com/shurcooL/httpgzip"
 	"github.com/shurcooL/issues"
+	"github.com/shurcooL/issuesapp/assets"
 	"github.com/shurcooL/issuesapp/common"
 	"github.com/shurcooL/reactions"
 	"github.com/shurcooL/users"
@@ -90,7 +91,7 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	r.HandleFunc("/new", handler.createIssueHandler).Methods("GET")
 	r.HandleFunc("/new", handler.postCreateIssueHandler).Methods("POST")
 	h.Handle("/", r)
-	assetsFileServer := httpgzip.FileServer(Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
+	assetsFileServer := httpgzip.FileServer(assets.Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
 	h.Handle("/assets/", assetsFileServer)
 	h.Handle("/assets/octicons/", http.StripPrefix("/assets", assetsFileServer))
 	h.Handle("/assets/gfm/", http.StripPrefix("/assets", assetsFileServer))
@@ -153,7 +154,7 @@ func (h *handler) loadTemplates(currentUser users.User) error {
 			return fmt.Sprintf("%v reacted with :%v:.", users, reaction.Reaction)
 		},
 	})
-	t, err = vfstemplate.ParseGlob(Assets, t, "/assets/*.tmpl")
+	t, err = vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")
 	if err != nil {
 		return err
 	}

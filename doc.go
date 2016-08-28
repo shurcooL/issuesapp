@@ -1,5 +1,3 @@
-//go:generate vfsgendev -source="github.com/shurcooL/issuesapp".Assets
-
 // Package issuesapp is a web frontend for an issues service.
 //
 // Note, the canonical issue tracker for this package is currently hosted at
