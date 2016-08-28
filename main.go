@@ -2,7 +2,6 @@ package issuesapp
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -91,10 +90,10 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	r.HandleFunc("/new", handler.createIssueHandler).Methods("GET")
 	r.HandleFunc("/new", handler.postCreateIssueHandler).Methods("POST")
 	h.Handle("/", r)
-	fileServer := httpgzip.FileServer(Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
-	h.Handle("/assets/", fileServer)
-	h.Handle("/assets/octicons/", http.StripPrefix("/assets", fileServer))
-	h.Handle("/assets/gfm/", http.StripPrefix("/assets", fileServer))
+	assetsFileServer := httpgzip.FileServer(Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
+	h.Handle("/assets/", assetsFileServer)
+	h.Handle("/assets/octicons/", http.StripPrefix("/assets", assetsFileServer))
+	h.Handle("/assets/gfm/", http.StripPrefix("/assets", assetsFileServer))
 
 	handler.Handler = h
 	return handler
@@ -163,7 +162,6 @@ func (h *handler) loadTemplates(currentUser users.User) error {
 }
 
 type BaseState struct {
-	ctx  context.Context
 	req  *http.Request
 	vars map[string]string
 
@@ -177,7 +175,6 @@ type BaseState struct {
 
 func (h *handler) baseState(req *http.Request) (BaseState, error) {
 	b := h.BaseState(req)
-	b.ctx = req.Context()
 	b.req = req
 	b.vars = mux.Vars(req)
 	b.repoSpec = h.RepoSpec(req)
@@ -188,7 +185,7 @@ func (h *handler) baseState(req *http.Request) (BaseState, error) {
 	if h.us == nil {
 		// No user service provided, so there can never be an authenticated user.
 		b.CurrentUser = users.User{}
-	} else if user, err := h.us.GetAuthenticated(b.ctx); err == nil {
+	} else if user, err := h.us.GetAuthenticated(req.Context()); err == nil {
 		b.CurrentUser = user
 	} else {
 		return BaseState{}, err
@@ -217,15 +214,15 @@ func (s state) Issues() ([]issues.Issue, error) {
 	case string(issues.ClosedState):
 		opt.State = issues.StateFilter(issues.ClosedState)
 	}
-	return s.is.List(s.ctx, s.repoSpec, opt)
+	return s.is.List(s.req.Context(), s.repoSpec, opt)
 }
 
 func (s state) OpenCount() (uint64, error) {
-	return s.is.Count(s.ctx, s.repoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
+	return s.is.Count(s.req.Context(), s.repoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
 }
 
 func (s state) ClosedCount() (uint64, error) {
-	return s.is.Count(s.ctx, s.repoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
+	return s.is.Count(s.req.Context(), s.repoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
 }
 
 func mustAtoi(s string) int {
@@ -237,15 +234,15 @@ func mustAtoi(s string) int {
 }
 
 func (s state) Issue() (issues.Issue, error) {
-	return s.is.Get(s.ctx, s.repoSpec, uint64(mustAtoi(s.vars["id"])))
+	return s.is.Get(s.req.Context(), s.repoSpec, uint64(mustAtoi(s.vars["id"])))
 }
 
 func (s state) Items() ([]issueItem, error) {
-	cs, err := s.is.ListComments(s.ctx, s.repoSpec, uint64(mustAtoi(s.vars["id"])), nil)
+	cs, err := s.is.ListComments(s.req.Context(), s.repoSpec, uint64(mustAtoi(s.vars["id"])), nil)
 	if err != nil {
 		return nil, err
 	}
-	es, err := s.is.ListEvents(s.ctx, s.repoSpec, uint64(mustAtoi(s.vars["id"])), nil)
+	es, err := s.is.ListEvents(s.req.Context(), s.repoSpec, uint64(mustAtoi(s.vars["id"])), nil)
 	if err != nil {
 		return nil, err
 	}
