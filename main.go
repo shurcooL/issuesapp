@@ -22,6 +22,7 @@ import (
 	"github.com/shurcooL/issues"
 	"github.com/shurcooL/issuesapp/assets"
 	"github.com/shurcooL/issuesapp/common"
+	"github.com/shurcooL/notifications"
 	"github.com/shurcooL/reactions"
 	"github.com/shurcooL/users"
 )
@@ -45,6 +46,8 @@ var RepoSpecContextKey = &contextKey{"RepoSpec"}
 var BaseURIContextKey = &contextKey{"BaseURI"}
 
 type Options struct {
+	Notifications notifications.Service // If not nil, issues containing unread notifications are highlighted.
+
 	RepoSpec func(req *http.Request) issues.RepoSpec
 	BaseURI  func(req *http.Request) string
 	HeadPre  template.HTML
@@ -171,6 +174,8 @@ type BaseState struct {
 
 	is issues.Service
 
+	notifications notifications.Service
+
 	common.State
 }
 
@@ -182,6 +187,8 @@ func (h *handler) baseState(req *http.Request) (BaseState, error) {
 	b.HeadPre = h.HeadPre
 
 	b.is = h.is
+
+	b.notifications = h.Options.Notifications
 
 	if h.us == nil {
 		// No user service provided, so there can never be an authenticated user.
@@ -207,7 +214,7 @@ func (s state) Tabs() (template.HTML, error) {
 	return tabs(&s, s.BaseURI+s.ReqPath, s.req.URL.RawQuery)
 }
 
-func (s state) Issues() ([]issues.Issue, error) {
+func (s state) Issues() ([]issue, error) {
 	var opt issues.IssueListOptions
 	switch selectedTab := s.req.URL.Query().Get(queryKeyState); selectedTab {
 	case "": // Default. TODO: Make this cleaner.
@@ -215,7 +222,59 @@ func (s state) Issues() ([]issues.Issue, error) {
 	case string(issues.ClosedState):
 		opt.State = issues.StateFilter(issues.ClosedState)
 	}
-	return s.is.List(s.req.Context(), s.repoSpec, opt)
+	is, err := s.is.List(s.req.Context(), s.repoSpec, opt)
+	if err != nil {
+		return nil, err
+	}
+	var dis []issue
+	for _, i := range is {
+		dis = append(dis, issue{Issue: i})
+	}
+	dis = s.augmentUnread(dis)
+	return dis, nil
+}
+
+func (s state) augmentUnread(dis []issue) []issue {
+	if s.notifications == nil {
+		return dis
+	}
+
+	tt, ok := s.is.(interface {
+		ThreadType() string
+	})
+	if !ok {
+		log.Println("augmentUnread: issues service doesn't implement ThreadType")
+		return dis
+	}
+	threadType := tt.ThreadType()
+
+	if s.CurrentUser.ID == 0 {
+		// Unauthenticated user cannot have any unread issues.
+		return dis
+	}
+
+	// TODO: Consider starting to do this in background in parallel with s.is.List.
+	ns, err := s.notifications.List(s.req.Context(), notifications.ListOptions{
+		Repo: &notifications.RepoSpec{URI: s.repoSpec.URI},
+	})
+	if err != nil {
+		log.Println("augmentUnread: failed to s.notifications.List:", err)
+		return dis
+	}
+
+	unreadThreads := make(map[uint64]struct{}) // Set of unread thread IDs.
+	for _, n := range ns {
+		if n.AppID != threadType { // Assumes RepoSpec matches because we filtered via notifications.ListOptions.
+			continue
+		}
+		unreadThreads[n.ThreadID] = struct{}{}
+	}
+
+	for i, di := range dis {
+		_, unread := unreadThreads[di.ID]
+		dis[i].Unread = unread
+	}
+	return dis
 }
 
 func (s state) OpenCount() (uint64, error) {

@@ -36,7 +36,7 @@
 <div class="list-entry list-entry-border">
 	{{template "issues-nav" .}}
 	{{with .Issues}}{{range .}}
-	<div class="list-entry-body multilist-entry">
+	<div class="list-entry-body multilist-entry"{{if .Unread}} style="box-shadow: 2px 0 0 #4183c4 inset;"{{end}}>
 		<div style="display: flex;">
 			{{template "issue-icon" .State}}
 			<div style="flex-grow: 1;">
