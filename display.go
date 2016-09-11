@@ -7,6 +7,8 @@ import (
 
 	"github.com/shurcooL/htmlg"
 	"github.com/shurcooL/issues"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 // issue is an issues.Issue wrapper with display augmentations.
@@ -81,9 +83,34 @@ func (e event) Text() template.HTML {
 		return htmlg.Render(htmlg.Text(fmt.Sprintf("%s this", e.Event.Type)))
 	case issues.Renamed:
 		return htmlg.Render(htmlg.Text("changed the title from "), htmlg.Strong(e.Event.Rename.From), htmlg.Text(" to "), htmlg.Strong(e.Event.Rename.To))
+	case issues.Labeled:
+		return htmlg.Render(htmlg.Text("added the "), renderLabel(e.Event.Label), htmlg.Text(" label"))
+	case issues.Unlabeled:
+		return htmlg.Render(htmlg.Text("removed the "), renderLabel(e.Event.Label), htmlg.Text(" label"))
 	default:
 		return htmlg.Render(htmlg.Text(string(e.Event.Type)))
 	}
+}
+
+// TODO: Dedup with assets/_data/label.html.tmpl template "label".
+func renderLabel(l *issues.Label) *html.Node {
+	// TODO: Make this much nicer.
+	// <span style="...">{{.Name}}</span>
+	span := &html.Node{
+		Type: html.ElementNode, Data: atom.Span.String(),
+		Attr: []html.Attribute{{
+			Key: atom.Style.String(),
+			Val: `display: inline-block;
+font-size: 12px;
+line-height: 1.2;
+padding: 0px 3px 0px 3px;
+border-radius: 2px;
+color: ` + l.FontColor() + `;
+background-color: ` + l.Color.HexString() + `;`,
+		}},
+	}
+	span.AppendChild(htmlg.Text(l.Name))
+	return span
 }
 
 func (e event) Octicon() string {
@@ -94,6 +121,8 @@ func (e event) Octicon() string {
 		return "octicon-circle-slash"
 	case issues.Renamed:
 		return "octicon-pencil"
+	case issues.Labeled, issues.Unlabeled:
+		return "octicon-tag"
 	default:
 		return "octicon-primitive-dot"
 	}
