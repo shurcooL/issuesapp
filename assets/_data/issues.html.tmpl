@@ -4,6 +4,7 @@
 	</head>
 	<body>
 		{{template "body-pre" .}} {{/* HACK: This is a temporary experiment. */}}
+		{{.BodyTop}}
 		{{template "create-issue" .}}
 		{{template "issues" .}}
 	</body>

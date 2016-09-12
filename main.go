@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/shurcooL/github_flavored_markdown"
 	"github.com/shurcooL/go-goon"
+	"github.com/shurcooL/htmlg"
 	"github.com/shurcooL/httpfs/html/vfstemplate"
 	"github.com/shurcooL/httpgzip"
 	"github.com/shurcooL/issues"
@@ -52,6 +53,9 @@ type Options struct {
 	BaseURI  func(req *http.Request) string
 	HeadPre  template.HTML
 	BodyPre  string // An html/template definition of "body-pre" template.
+
+	// BodyTop provides components to include on top of <body> of page rendered for req. It can be nil.
+	BodyTop func(req *http.Request) ([]htmlg.ComponentContext, error)
 
 	// TODO.
 	BaseState func(req *http.Request) BaseState
@@ -171,6 +175,7 @@ type BaseState struct {
 
 	repoSpec issues.RepoSpec
 	HeadPre  template.HTML
+	BodyTop  template.HTML
 
 	is issues.Service
 
@@ -185,6 +190,18 @@ func (h *handler) baseState(req *http.Request) (BaseState, error) {
 	b.vars = mux.Vars(req)
 	b.repoSpec = h.RepoSpec(req)
 	b.HeadPre = h.HeadPre
+	if h.BodyTop != nil {
+		c, err := h.BodyTop(req)
+		if err != nil {
+			return BaseState{}, err
+		}
+		var buf bytes.Buffer
+		err = htmlg.RenderComponentsContext(req.Context(), &buf, c...)
+		if err != nil {
+			return BaseState{}, err
+		}
+		b.BodyTop = template.HTML(buf.String())
+	}
 
 	b.is = h.is
 
