@@ -208,7 +208,7 @@ span.emoji-outer {
 	font-size: 22px;
 	margin-right: 4px;
 }
-.reaction b {
+.reaction strong {
 	font-family: sans-serif;
 	font-size: 14px;
 }
@@ -249,6 +249,7 @@ div.new-reaction {
 	border: 1px solid #e0e0e0;
 	border-radius: 4px;
 	margin-top: 4px;
+	vertical-align: top;
 }
 div.new-reaction i {
 	font-size: 18px;
