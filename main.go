@@ -70,8 +70,16 @@ type handler struct {
 	Options
 }
 
+// TODO: Find a better way for issuesapp to be able to ensure registration of a top-level route:
+//
+// 	emojisHandler := httpgzip.FileServer(emojis.Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
+// 	http.Handle("/emojis/", http.StripPrefix("/emojis", emojisHandler))
+//
+// So that it can depend on it.
+
 // New returns an issues app http.Handler using given services and options.
 // If usersService is nil, then there is no way to have an authenticated user.
+// Emojis image data is expected to be available at /emojis/emojis.png.
 func New(service issues.Service, usersService users.Service, opt Options) http.Handler {
 	handler := &handler{
 		is:      service,
