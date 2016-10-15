@@ -47,7 +47,8 @@ var RepoSpecContextKey = &contextKey{"RepoSpec"}
 var BaseURIContextKey = &contextKey{"BaseURI"}
 
 type Options struct {
-	Notifications notifications.Service // If not nil, issues containing unread notifications are highlighted.
+	Notifications    notifications.Service // If not nil, issues containing unread notifications are highlighted.
+	DisableReactions bool                  // Disable all support for displaying and toggling reactions.
 
 	RepoSpec func(req *http.Request) issues.RepoSpec
 	BaseURI  func(req *http.Request) string
@@ -79,7 +80,8 @@ type handler struct {
 
 // New returns an issues app http.Handler using given services and options.
 // If usersService is nil, then there is no way to have an authenticated user.
-// Emojis image data is expected to be available at /emojis/emojis.png.
+// Emojis image data is expected to be available at /emojis/emojis.png, unless
+// opt.DisableReactions is true.
 func New(service issues.Service, usersService users.Service, opt Options) http.Handler {
 	handler := &handler{
 		is:      service,
@@ -87,7 +89,7 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 		Options: opt,
 	}
 
-	err := handler.loadTemplates(users.User{})
+	err := handler.loadTemplates(common.State{})
 	if err != nil {
 		log.Fatalln("loadTemplates:", err)
 	}
@@ -117,7 +119,7 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 
 var t *template.Template
 
-func (h *handler) loadTemplates(currentUser users.User) error {
+func (h *handler) loadTemplates(state common.State) error {
 	var err error
 	t = template.New("").Funcs(template.FuncMap{
 		"dump": func(v interface{}) string { return goon.Sdump(v) },
@@ -134,11 +136,11 @@ func (h *handler) loadTemplates(currentUser users.User) error {
 		"reactionPosition": func(emojiID reactions.EmojiID) string { return reactions.Position(":" + string(emojiID) + ":") },
 		// THINK.
 		"containsCurrentUser": func(users []users.User) bool {
-			if currentUser.ID == 0 {
+			if state.CurrentUser.ID == 0 {
 				return false
 			}
 			for _, u := range users {
-				if u.ID == currentUser.ID {
+				if u.ID == state.CurrentUser.ID {
 					return true
 				}
 			}
@@ -154,7 +156,7 @@ func (h *handler) loadTemplates(currentUser users.User) error {
 						users += " and "
 					}
 				}
-				if currentUser.ID != 0 && u.ID == currentUser.ID {
+				if state.CurrentUser.ID != 0 && u.ID == state.CurrentUser.ID {
 					if i == 0 {
 						users += "You"
 					} else {
@@ -168,6 +170,7 @@ func (h *handler) loadTemplates(currentUser users.User) error {
 			//       Count them and add "and N others" here.
 			return fmt.Sprintf("%v reacted with :%v:.", users, reaction.Reaction)
 		},
+		"state": func() common.State { return state },
 	})
 	t, err = vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")
 	if err != nil {
@@ -214,6 +217,8 @@ func (h *handler) baseState(req *http.Request) (BaseState, error) {
 	b.is = h.is
 
 	b.notifications = h.Options.Notifications
+
+	b.DisableReactions = h.Options.DisableReactions
 
 	if h.us == nil {
 		// No user service provided, so there can never be an authenticated user.
@@ -343,7 +348,7 @@ func (s state) Items() ([]issueItem, error) {
 }
 
 func (h *handler) issuesHandler(w http.ResponseWriter, req *http.Request) {
-	if err := h.loadTemplates(users.User{}); err != nil {
+	if err := h.loadTemplates(common.State{}); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -374,7 +379,7 @@ func (h *handler) issueHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// THINK.
-	if err := h.loadTemplates(baseState.CurrentUser); err != nil {
+	if err := h.loadTemplates(baseState.State); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -391,7 +396,7 @@ func (h *handler) issueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) createIssueHandler(w http.ResponseWriter, req *http.Request) {
-	if err := h.loadTemplates(users.User{}); err != nil {
+	if err := h.loadTemplates(common.State{}); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

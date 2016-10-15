@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/shurcooL/issues"
+	"github.com/shurcooL/issuesapp/common"
 	"github.com/shurcooL/users"
 )
 
 func (h *handler) mockHandler(w http.ResponseWriter, req *http.Request) {
-	if err := h.loadTemplates(users.User{}); err != nil {
+	if err := h.loadTemplates(common.State{}); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
