@@ -27,6 +27,12 @@ var document = dom.GetWindow().Document().(dom.HTMLDocument)
 var state common.State
 
 func main() {
+	stateJSON := js.Global.Get("State").String()
+	err := json.Unmarshal([]byte(stateJSON), &state)
+	if err != nil {
+		panic(err)
+	}
+
 	js.Global.Set("MarkdownPreview", jsutil.Wrap(MarkdownPreview))
 	js.Global.Set("SwitchWriteTab", jsutil.Wrap(SwitchWriteTab))
 	js.Global.Set("PasteHandler", jsutil.Wrap(PasteHandler))
@@ -34,15 +40,11 @@ func main() {
 	js.Global.Set("ToggleIssueState", ToggleIssueState)
 	js.Global.Set("PostComment", PostComment)
 	js.Global.Set("EditComment", jsutil.Wrap(EditComment))
-	js.Global.Set("ShowReactionMenu", jsutil.Wrap(Reactions.Show))
-	js.Global.Set("ToggleReaction", jsutil.Wrap(Reactions.ToggleReaction))
-	js.Global.Set("TabSupportKeyDownHandler", jsutil.Wrap(tabsupport.KeyDownHandler))
-
-	stateJSON := js.Global.Get("State").String()
-	err := json.Unmarshal([]byte(stateJSON), &state)
-	if err != nil {
-		panic(err)
+	if !state.DisableReactions {
+		js.Global.Set("ShowReactionMenu", jsutil.Wrap(Reactions.Show))
+		js.Global.Set("ToggleReaction", jsutil.Wrap(Reactions.ToggleReaction))
 	}
+	js.Global.Set("TabSupportKeyDownHandler", jsutil.Wrap(tabsupport.KeyDownHandler))
 
 	document.AddEventListener("DOMContentLoaded", false, func(_ dom.Event) {
 		setup()
@@ -63,7 +65,9 @@ func setup() {
 		})
 	}
 
-	setupReactionsMenu()
+	if !state.DisableReactions {
+		setupReactionsMenu()
+	}
 }
 
 func setupIssueToggleButton() {
