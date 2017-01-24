@@ -361,10 +361,8 @@ func (h *handler) issuesHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	state := state{
-		BaseState: baseState,
-	}
-	err = t.ExecuteTemplate(w, "issues.html.tmpl", &state)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err = t.ExecuteTemplate(w, "issues.html.tmpl", &state{BaseState: baseState})
 	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -385,11 +383,8 @@ func (h *handler) issueHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	state := state{
-		BaseState: baseState,
-	}
 	var buf bytes.Buffer
-	err = t.ExecuteTemplate(&buf, "issue.html.tmpl", &state)
+	err = t.ExecuteTemplate(&buf, "issue.html.tmpl", &state{BaseState: baseState})
 	if err != nil && strings.Contains(err.Error(), "no such file or directory") { // TODO: Better error handling.
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, "404 Not Found", http.StatusNotFound)
@@ -399,6 +394,7 @@ func (h *handler) issueHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	io.Copy(w, &buf)
 }
 
@@ -419,10 +415,8 @@ func (h *handler) createIssueHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "this page requires an authenticated user", http.StatusUnauthorized)
 		return
 	}
-	state := state{
-		BaseState: baseState,
-	}
-	err = t.ExecuteTemplate(w, "new-issue.html.tmpl", &state)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err = t.ExecuteTemplate(w, "new-issue.html.tmpl", &state{BaseState: baseState})
 	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
