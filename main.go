@@ -189,29 +189,14 @@ func (h *handler) loadTemplates(state common.State) error {
 	return err
 }
 
-type BaseState struct {
-	req  *http.Request
-	vars map[string]string
-
-	repoSpec issues.RepoSpec
-	HeadPre  template.HTML
-	BodyTop  template.HTML
-
-	is issues.Service
-
-	notifications notifications.Service
-
-	common.State
-}
-
-func (h *handler) baseState(req *http.Request) (BaseState, error) {
+func (h *handler) state(req *http.Request) (state, error) {
 	repoSpec, ok := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
 	if !ok {
-		return BaseState{}, fmt.Errorf("request to %v doesn't have issuesapp.RepoSpecContextKey context key set", req.URL.Path)
+		return state{}, fmt.Errorf("request to %v doesn't have issuesapp.RepoSpecContextKey context key set", req.URL.Path)
 	}
 	baseURI, ok := req.Context().Value(BaseURIContextKey).(string)
 	if !ok {
-		return BaseState{}, fmt.Errorf("request to %v doesn't have issuesapp.BaseURIContextKey context key set", req.URL.Path)
+		return state{}, fmt.Errorf("request to %v doesn't have issuesapp.BaseURIContextKey context key set", req.URL.Path)
 	}
 
 	// TODO: Caller still does a lot of work outside to calculate req.URL.Path by
@@ -221,7 +206,7 @@ func (h *handler) baseState(req *http.Request) (BaseState, error) {
 	if reqPath == "/" {
 		reqPath = "" // This is needed so that absolute URL for root view, i.e., /issues, is "/issues" and not "/issues/" because of "/issues" + "/".
 	}
-	b := BaseState{
+	b := state{
 		State: common.State{
 			BaseURI: baseURI,
 			ReqPath: reqPath,
@@ -234,12 +219,12 @@ func (h *handler) baseState(req *http.Request) (BaseState, error) {
 	if h.BodyTop != nil {
 		c, err := h.BodyTop(req)
 		if err != nil {
-			return BaseState{}, err
+			return state{}, err
 		}
 		var buf bytes.Buffer
 		err = htmlg.RenderComponentsContext(req.Context(), &buf, c...)
 		if err != nil {
-			return BaseState{}, err
+			return state{}, err
 		}
 		b.BodyTop = template.HTML(buf.String())
 	}
@@ -256,14 +241,25 @@ func (h *handler) baseState(req *http.Request) (BaseState, error) {
 	} else if user, err := h.us.GetAuthenticated(req.Context()); err == nil {
 		b.CurrentUser = user
 	} else {
-		return BaseState{}, err
+		return state{}, err
 	}
 
 	return b, nil
 }
 
 type state struct {
-	BaseState
+	req  *http.Request
+	vars map[string]string
+
+	repoSpec issues.RepoSpec
+	HeadPre  template.HTML
+	BodyTop  template.HTML
+
+	is issues.Service
+
+	notifications notifications.Service
+
+	common.State
 }
 
 func (s state) Tab() (issues.State, error) {
@@ -384,14 +380,14 @@ func (h *handler) issuesHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	baseState, err := h.baseState(req)
+	state, err := h.state(req)
 	if err != nil {
-		log.Println("baseState:", err)
+		log.Println("state:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = t.ExecuteTemplate(w, "issues.html.tmpl", &state{BaseState: baseState})
+	err = t.ExecuteTemplate(w, "issues.html.tmpl", &state)
 	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -400,20 +396,20 @@ func (h *handler) issuesHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) issueHandler(w http.ResponseWriter, req *http.Request) {
-	baseState, err := h.baseState(req)
+	state, err := h.state(req)
 	if err != nil {
-		log.Println("baseState:", err)
+		log.Println("state:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// THINK.
-	if err := h.loadTemplates(baseState.State); err != nil {
+	if err := h.loadTemplates(state.State); err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	var buf bytes.Buffer
-	err = t.ExecuteTemplate(&buf, "issue.html.tmpl", &state{BaseState: baseState})
+	err = t.ExecuteTemplate(&buf, "issue.html.tmpl", &state)
 	if err != nil && strings.Contains(err.Error(), "no such file or directory") { // TODO: Better error handling.
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, "404 Not Found", http.StatusNotFound)
@@ -434,18 +430,18 @@ func (h *handler) createIssueHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	baseState, err := h.baseState(req)
+	state, err := h.state(req)
 	if err != nil {
-		log.Println("baseState:", err)
+		log.Println("state:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if baseState.CurrentUser.ID == 0 {
+	if state.CurrentUser.ID == 0 {
 		http.Error(w, "this page requires an authenticated user", http.StatusUnauthorized)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = t.ExecuteTemplate(w, "new-issue.html.tmpl", &state{BaseState: baseState})
+	err = t.ExecuteTemplate(w, "new-issue.html.tmpl", &state)
 	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

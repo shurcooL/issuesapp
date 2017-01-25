@@ -21,8 +21,8 @@
 {{define "head"}}
 	{{template "scriptless-head" .}}
 	<script type="text/javascript">
-		var State = {{.BaseState | jsonfmt}};
-		{{/*var State = {{.BaseState}};*/}}
+		var State = {{.State | jsonfmt}};
+		{{/*var State = {{.State}};*/}}
 	</script>
 	<script src="{{.BaseURI}}/assets/script/script.js" type="text/javascript"></script>
 {{end}}

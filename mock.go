@@ -19,16 +19,14 @@ func (h *handler) mockHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	tmpl := path.Base(req.URL.Path)
-	baseState, err := h.baseState(req)
+	state, err := h.state(req)
 	if err != nil {
-		log.Println("baseState:", err)
+		log.Println("state:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	mock := mockState{
-		state: state{
-			BaseState: baseState,
-		},
+		state: state,
 	}
 	err = t.ExecuteTemplate(w, tmpl+".tmpl", &mock)
 	if err != nil {

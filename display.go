@@ -20,11 +20,9 @@ type issue struct {
 
 // issueItem represents an issue item for display purposes.
 type issueItem struct {
-	IssueItem
+	// IssueItem can be one of issues.Comment, event.
+	IssueItem interface{}
 }
-
-// IssueItem can be one of issues.Comment, event.
-type IssueItem interface{}
 
 func (i issueItem) TemplateName() string {
 	switch i.IssueItem.(type) {
