@@ -58,9 +58,6 @@ type Options struct {
 
 	// BodyTop provides components to include on top of <body> of page rendered for req. It can be nil.
 	BodyTop func(req *http.Request) ([]htmlg.ComponentContext, error)
-
-	// TODO.
-	BaseState func(req *http.Request) BaseState
 }
 
 type handler struct {
@@ -197,10 +194,25 @@ type BaseState struct {
 }
 
 func (h *handler) baseState(req *http.Request) (BaseState, error) {
-	b := h.BaseState(req)
+	repoSpec := h.RepoSpec(req)
+	baseURI := h.BaseURI(req)
+
+	// TODO: Caller still does a lot of work outside to calculate req.URL.Path by
+	//       subtracting BaseURI from full original req.URL.Path. We should be able
+	//       to compute it here internally by using req.RequestURI and BaseURI.
+	reqPath := req.URL.Path
+	if reqPath == "/" {
+		reqPath = "" // This is needed so that absolute URL for root view, i.e., /issues, is "/issues" and not "/issues/" because of "/issues" + "/".
+	}
+	b := BaseState{
+		State: common.State{
+			BaseURI: baseURI,
+			ReqPath: reqPath,
+		},
+	}
 	b.req = req
 	b.vars = mux.Vars(req)
-	b.repoSpec = h.RepoSpec(req)
+	b.repoSpec = repoSpec
 	b.HeadPre = h.HeadPre
 	if h.BodyTop != nil {
 		c, err := h.BodyTop(req)
