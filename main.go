@@ -51,10 +51,8 @@ type Options struct {
 	Notifications    notifications.Service // If not nil, issues containing unread notifications are highlighted.
 	DisableReactions bool                  // Disable all support for displaying and toggling reactions.
 
-	RepoSpec func(req *http.Request) issues.RepoSpec
-	BaseURI  func(req *http.Request) string
-	HeadPre  template.HTML
-	BodyPre  string // An html/template definition of "body-pre" template.
+	HeadPre template.HTML
+	BodyPre string // An html/template definition of "body-pre" template.
 
 	// BodyTop provides components to include on top of <body> of page rendered for req. It can be nil.
 	BodyTop func(req *http.Request) ([]htmlg.ComponentContext, error)
@@ -80,6 +78,19 @@ type handler struct {
 // If usersService is nil, then there is no way to have an authenticated user.
 // Emojis image data is expected to be available at /emojis/emojis.png, unless
 // opt.DisableReactions is true.
+//
+// In order to serve HTTP requests, the returned http.Handler expects each incoming
+// request to have 2 parameters provided to it via RepoSpecContextKey and BaseURIContextKey
+// context keys. For example:
+//
+// 	issuesApp := issuesapp.New(...)
+//
+// 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+// 		req = req.WithContext(context.WithValue(req.Context(), issuesapp.RepoSpecContextKey, issues.RepoSpec{...}))
+// 		req = req.WithContext(context.WithValue(req.Context(), issuesapp.BaseURIContextKey, string(...)))
+// 		issuesApp.ServeHTTP(w, req)
+// 	})
+//
 func New(service issues.Service, usersService users.Service, opt Options) http.Handler {
 	handler := &handler{
 		is:      service,
@@ -194,8 +205,14 @@ type BaseState struct {
 }
 
 func (h *handler) baseState(req *http.Request) (BaseState, error) {
-	repoSpec := h.RepoSpec(req)
-	baseURI := h.BaseURI(req)
+	repoSpec, ok := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
+	if !ok {
+		return BaseState{}, fmt.Errorf("request to %v doesn't have issuesapp.RepoSpecContextKey context key set", req.URL.Path)
+	}
+	baseURI, ok := req.Context().Value(BaseURIContextKey).(string)
+	if !ok {
+		return BaseState{}, fmt.Errorf("request to %v doesn't have issuesapp.BaseURIContextKey context key set", req.URL.Path)
+	}
 
 	// TODO: Caller still does a lot of work outside to calculate req.URL.Path by
 	//       subtracting BaseURI from full original req.URL.Path. We should be able
@@ -437,8 +454,8 @@ func (h *handler) createIssueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) postCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
-	baseURI := h.BaseURI(req)
-	repoSpec := h.RepoSpec(req)
+	baseURI := req.Context().Value(BaseURIContextKey).(string)
+	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
 
 	var issue issues.Issue
 	err := json.NewDecoder(req.Body).Decode(&issue)
@@ -466,7 +483,7 @@ func (h *handler) postEditIssueHandler(w http.ResponseWriter, req *http.Request)
 	}
 
 	vars := mux.Vars(req)
-	repoSpec := h.RepoSpec(req)
+	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
 
 	var ir issues.IssueRequest
 	err := json.Unmarshal([]byte(req.PostForm.Get("value")), &ir)
@@ -527,7 +544,7 @@ func (h *handler) postCommentHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	vars := mux.Vars(req)
-	repoSpec := h.RepoSpec(req)
+	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
 
 	comment := issues.Comment{
 		Body: req.PostForm.Get("value"),
@@ -557,7 +574,7 @@ func (h *handler) postEditCommentHandler(w http.ResponseWriter, req *http.Reques
 	}
 
 	vars := mux.Vars(req)
-	repoSpec := h.RepoSpec(req)
+	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
 
 	body := req.PostForm.Get("value")
 	cr := issues.CommentRequest{
@@ -581,7 +598,7 @@ func (h *handler) postToggleReactionHandler(w http.ResponseWriter, req *http.Req
 	}
 
 	vars := mux.Vars(req)
-	repoSpec := h.RepoSpec(req)
+	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
 
 	reaction := reactions.EmojiID(req.PostForm.Get("reaction"))
 	cr := issues.CommentRequest{
