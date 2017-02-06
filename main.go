@@ -55,7 +55,7 @@ type Options struct {
 	BodyPre string // An html/template definition of "body-pre" template.
 
 	// BodyTop provides components to include on top of <body> of page rendered for req. It can be nil.
-	BodyTop func(req *http.Request) ([]htmlg.ComponentContext, error)
+	BodyTop func(req *http.Request) ([]htmlg.Component, error)
 }
 
 type handler struct {
@@ -222,7 +222,7 @@ func (h *handler) state(req *http.Request) (state, error) {
 			return state{}, err
 		}
 		var buf bytes.Buffer
-		err = htmlg.RenderComponentsContext(req.Context(), &buf, c...)
+		err = htmlg.RenderComponents(&buf, c...)
 		if err != nil {
 			return state{}, err
 		}
