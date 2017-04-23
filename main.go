@@ -612,6 +612,19 @@ func (h *handler) postToggleReactionHandler(w http.ResponseWriter, req *http.Req
 		return
 	}
 
+	state, err := h.state(req) // TODO: Don't need all state, just CurrentUser... Maybe shortcut it?
+	if err != nil {
+		log.Println("state:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Call loadTemplates to set updated containsCurrentUser, reactionTooltip template functions.
+	if err := h.loadTemplates(state.State); err != nil {
+		log.Println("loadTemplates:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	// TODO: Deduplicate.
 	// {{template "reactions" .Reactions}}{{template "new-reaction" .ID}}
 	err = t.ExecuteTemplate(w, "reactions", comment.Reactions)
