@@ -34,4 +34,4 @@ go generate github.com/shurcooL/issuesapp/...
 License
 -------
 
--	[MIT License](https://opensource.org/licenses/mit-license.php)
+-	[MIT License](LICENSE)
