@@ -149,7 +149,7 @@ func (h *handler) loadTemplates(state common.State) error {
 				return false
 			}
 			for _, u := range users {
-				if u.ID == state.CurrentUser.ID {
+				if u.UserSpec == state.CurrentUser.UserSpec {
 					return true
 				}
 			}
@@ -165,7 +165,7 @@ func (h *handler) loadTemplates(state common.State) error {
 						users += " and "
 					}
 				}
-				if state.CurrentUser.ID != 0 && u.ID == state.CurrentUser.ID {
+				if state.CurrentUser.ID != 0 && u.UserSpec == state.CurrentUser.UserSpec {
 					if i == 0 {
 						users += "You"
 					} else {
