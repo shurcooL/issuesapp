@@ -143,6 +143,9 @@ func (h *handler) loadTemplates(state common.State) error {
 		"reltime":          humanize.Time,
 		"gfm":              func(s string) template.HTML { return template.HTML(github_flavored_markdown.Markdown([]byte(s))) },
 		"reactionPosition": func(emojiID reactions.EmojiID) string { return reactions.Position(":" + string(emojiID) + ":") },
+		"equalUsers": func(a, b users.User) bool {
+			return a.UserSpec == b.UserSpec
+		},
 		// THINK.
 		"containsCurrentUser": func(users []users.User) bool {
 			if state.CurrentUser.ID == 0 {

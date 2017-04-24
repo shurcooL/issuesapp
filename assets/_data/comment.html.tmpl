@@ -21,7 +21,7 @@
 			<div class="list-entry-container list-entry-border">
 				<div class="list-entry-header" style="display: flex;">
 					<span class="content">{{template "user" .User}} commented <a class="black" href="#comment-{{.ID}}" onclick="AnchorScroll(this, event);">{{template "time" .CreatedAt}}</a>
-						{{with .Edited}} · <span style="cursor: default;" title="{{.By.Login}} edited this comment {{reltime .At}}.">edited</span>{{end}}
+						{{with .Edited}} · <span style="cursor: default;" title="{{.By.Login}} edited this comment {{reltime .At}}.">edited{{if not (equalUsers $.User .By)}} by {{.By.Login}}{{end}}</span>{{end}}
 					</span>
 					{{if (not state.DisableReactions)}}
 						<span class="right-icon"><a href="javascript:" title="React" onclick="ShowReactionMenu(this, event, {{.ID}});"><i class="octicon octicon-smiley"><sup>+</sup></i></a></span>
