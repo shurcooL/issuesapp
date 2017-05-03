@@ -607,7 +607,7 @@ func (h *handler) postToggleReactionHandler(w http.ResponseWriter, req *http.Req
 
 	comment, err := h.is.EditComment(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), cr)
 	if os.IsPermission(err) { // TODO: Move this to a higher level (and upate all other similar code too).
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	} else if err != nil {
 		log.Println("is.EditComment:", err)
