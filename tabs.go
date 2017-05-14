@@ -81,5 +81,5 @@ func tabs(s *state, path string, rawQuery string) (template.HTML, error) {
 		ns = append(ns, a)
 	}
 
-	return htmlg.Render(ns...), nil
+	return template.HTML(htmlg.Render(ns...)), nil
 }

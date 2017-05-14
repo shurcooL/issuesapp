@@ -78,15 +78,15 @@ type event struct {
 func (e event) Text() template.HTML {
 	switch e.Event.Type {
 	case issues.Reopened, issues.Closed:
-		return htmlg.Render(htmlg.Text(fmt.Sprintf("%s this", e.Event.Type)))
+		return template.HTML(htmlg.Render(htmlg.Text(fmt.Sprintf("%s this", e.Event.Type))))
 	case issues.Renamed:
-		return htmlg.Render(htmlg.Text("changed the title from "), htmlg.Strong(e.Event.Rename.From), htmlg.Text(" to "), htmlg.Strong(e.Event.Rename.To))
+		return template.HTML(htmlg.Render(htmlg.Text("changed the title from "), htmlg.Strong(e.Event.Rename.From), htmlg.Text(" to "), htmlg.Strong(e.Event.Rename.To)))
 	case issues.Labeled:
-		return htmlg.Render(htmlg.Text("added the "), renderLabel(e.Event.Label), htmlg.Text(" label"))
+		return template.HTML(htmlg.Render(htmlg.Text("added the "), renderLabel(e.Event.Label), htmlg.Text(" label")))
 	case issues.Unlabeled:
-		return htmlg.Render(htmlg.Text("removed the "), renderLabel(e.Event.Label), htmlg.Text(" label"))
+		return template.HTML(htmlg.Render(htmlg.Text("removed the "), renderLabel(e.Event.Label), htmlg.Text(" label")))
 	default:
-		return htmlg.Render(htmlg.Text(string(e.Event.Type)))
+		return template.HTML(htmlg.Render(htmlg.Text(string(e.Event.Type))))
 	}
 }
 
