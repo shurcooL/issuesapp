@@ -31,6 +31,14 @@ When you're done with development, you should run `go generate` and commit that:
 go generate github.com/shurcooL/issuesapp/...
 ```
 
+Directories
+-----------
+
+| Path                                                             | Synopsis                                                      |
+|------------------------------------------------------------------|---------------------------------------------------------------|
+| [assets](https://godoc.org/github.com/shurcooL/issuesapp/assets) | Package assets contains assets for issuesapp.                 |
+| [common](https://godoc.org/github.com/shurcooL/issuesapp/common) | Package common contains common code for backend and frontend. |
+
 License
 -------
 
