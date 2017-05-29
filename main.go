@@ -188,7 +188,7 @@ func (h *handler) loadTemplates(state common.State) error {
 	if err != nil {
 		return err
 	}
-	t, err = t.New("body-pre").Parse(h.BodyPre) // HACK: This is a temporary experiment.
+	t, err = t.New("body-pre").Parse(h.BodyPre)
 	return err
 }
 

@@ -3,14 +3,13 @@
 		{{template "scriptless-head" .}}
 	</head>
 	<body>
-		{{template "body-pre" .}} {{/* HACK: This is a temporary experiment. */}}
+		{{template "body-pre" .}}
 		{{.BodyTop}}
 		{{template "create-issue" .}}
 		{{template "issues" .}}
 	</body>
 </html>
 
-{{/* HACK: This is a temporary experiment. */}}
 {{define "scriptless-head"}}
 	{{.HeadPre}}
 	<link href="{{.BaseURI}}/assets/octicons/octicons.min.css" rel="stylesheet" type="text/css" />
