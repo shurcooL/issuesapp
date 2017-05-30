@@ -413,7 +413,7 @@ func (h *handler) issueHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	var buf bytes.Buffer
 	err = t.ExecuteTemplate(&buf, "issue.html.tmpl", &state)
-	if err != nil && strings.Contains(err.Error(), "no such file or directory") { // TODO: Better error handling.
+	if err != nil && (strings.Contains(err.Error(), "no such file or directory") || strings.Contains(err.Error(), "does not exist")) { // TODO: Better error handling.
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, "404 Not Found", http.StatusNotFound)
 		return
