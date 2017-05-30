@@ -369,6 +369,14 @@ func (s state) Items() ([]issueItem, error) {
 	return items, nil
 }
 
+// ForceIssuesApp reports whether "issuesapp" query is true.
+// This is a temporary solution for external users to use when overriding templates.
+// It's going to go away eventually, so its use is discouraged.
+func (s state) ForceIssuesApp() bool {
+	forceIssuesApp, _ := strconv.ParseBool(s.req.URL.Query().Get("issuesapp"))
+	return forceIssuesApp
+}
+
 func (h *handler) issuesHandler(w http.ResponseWriter, req *http.Request) {
 	if err := h.loadTemplates(common.State{}); err != nil {
 		log.Println("loadTemplates:", err)
