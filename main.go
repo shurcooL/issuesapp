@@ -91,6 +91,14 @@ type handler struct {
 // 		issuesApp.ServeHTTP(w, req)
 // 	})
 //
+// An HTTP API must be available (currently, only EditComment endpoint is used for reacting):
+//
+// 	// Register HTTP API endpoints.
+// 	apiHandler := httphandler.Issues{Issues: service}
+// 	http.Handle(httproute.List, errorHandler(apiHandler.List))
+// 	http.Handle(httproute.Count, errorHandler(apiHandler.Count))
+// 	http.Handle(httproute.ListComments, errorHandler(apiHandler.ListComments))
+// 	http.Handle(httproute.EditComment, errorHandler(apiHandler.EditComment))
 func New(service issues.Service, usersService users.Service, opt Options) http.Handler {
 	handler := &handler{
 		is:      service,

@@ -11,12 +11,13 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/shurcooL/home/httphandler"
 	"github.com/shurcooL/home/httputil"
 	"github.com/shurcooL/httpgzip"
 	"github.com/shurcooL/issues"
 	"github.com/shurcooL/issues/fs"
 	"github.com/shurcooL/issuesapp"
+	"github.com/shurcooL/issuesapp/httphandler"
+	"github.com/shurcooL/issuesapp/httproute"
 	"github.com/shurcooL/reactions"
 	"github.com/shurcooL/reactions/emojis"
 	"github.com/shurcooL/users"
@@ -73,10 +74,10 @@ func run() error {
 
 	// Register HTTP API endpoints.
 	apiHandler := httphandler.Issues{Issues: service}
-	http.Handle("/api/issues/list", httputil.ErrorHandler(users, apiHandler.List))
-	http.Handle("/api/issues/count", httputil.ErrorHandler(users, apiHandler.Count))
-	http.Handle("/api/issues/list-comments", httputil.ErrorHandler(users, apiHandler.ListComments))
-	http.Handle("/api/issues/edit-comment", httputil.ErrorHandler(users, apiHandler.EditComment))
+	http.Handle(httproute.List, httputil.ErrorHandler(users, apiHandler.List))
+	http.Handle(httproute.Count, httputil.ErrorHandler(users, apiHandler.Count))
+	http.Handle(httproute.ListComments, httputil.ErrorHandler(users, apiHandler.ListComments))
+	http.Handle(httproute.EditComment, httputil.ErrorHandler(users, apiHandler.EditComment))
 
 	opt := issuesapp.Options{
 		HeadPre: `<meta name="viewport" content="width=device-width">
