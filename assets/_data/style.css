@@ -185,10 +185,24 @@ nav .selected {
 	font-weight: bold;
 }
 
-div.comment-reactions-container {
+span.right-icon div.new-reaction {
+	width: 22px;
+}
+span.right-icon div.new-reaction .smiley {
+	width: 16px;
+	height: 16px;
+}
+span.right-icon div.new-reaction .plus {
+	top: -4px;
+	width: 6px;
+	position: relative;
+}
+
+div.reactable-container {
+	vertical-align: top;
 	margin-left: 58px;
 }
-div.comment-reactions-container:hover div.new-reaction {
+div.reactable-container:hover div.new-reaction {
 	display: inline-block;
 }
 
@@ -239,11 +253,11 @@ div.others:hover {
 	border: 1px solid #92def9;
 }
 
-div.new-reaction {
+div.reactable-container div.new-reaction {
 	cursor: pointer;
 	display: none;
 	box-sizing: border-box;
-	padding: 5px 2px 5px 4px;
+	padding: 5px 4px;
 	height: 30px;
 	color: #aaa;
 	border: 1px solid #e0e0e0;
@@ -251,20 +265,18 @@ div.new-reaction {
 	margin-top: 4px;
 	vertical-align: top;
 }
-div.new-reaction i {
-	font-size: 18px;
+div.reactable-container div.new-reaction .smiley {
+	width: 18px;
+	height: 18px;
 }
-div.new-reaction:hover {
+div.reactable-container div.new-reaction .plus {
+	top: -4px;
+	width: 6px;
+	position: relative;
+}
+div.reactable-container div.new-reaction:hover {
 	color: #eda000;
 	border: 1px solid #92def9;
-}
-
-sup {
-	top: -0.5em;
-	position: relative;
-	font-size: 75%;
-	line-height: 0;
-	vertical-align: baseline;
 }
 
 span.rm-emoji {

@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,6 +25,7 @@ import (
 	"github.com/shurcooL/issuesapp/common"
 	"github.com/shurcooL/notifications"
 	"github.com/shurcooL/reactions"
+	reactionscomponent "github.com/shurcooL/reactions/component"
 	"github.com/shurcooL/users"
 )
 
@@ -121,7 +121,6 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	r.HandleFunc("/{id:[0-9]+}/edit", handler.postEditIssueHandler).Methods("POST")
 	r.HandleFunc("/{id:[0-9]+}/comment", handler.postCommentHandler).Methods("POST")
 	r.HandleFunc("/{id:[0-9]+}/comment/{commentID:[0-9]+}", handler.postEditCommentHandler).Methods("POST")
-	r.HandleFunc("/{id:[0-9]+}/comment/{commentID:[0-9]+}/react", handler.postToggleReactionHandler).Methods("POST")
 	r.HandleFunc("/new", handler.createIssueHandler).Methods("GET")
 	r.HandleFunc("/new", handler.postCreateIssueHandler).Methods("POST")
 	h.Handle("/", r)
@@ -137,7 +136,6 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 var t *template.Template
 
 func (h *handler) loadTemplates(state common.State) error {
-	var err error
 	t = template.New("").Funcs(template.FuncMap{
 		"dump": func(v interface{}) string { return goon.Sdump(v) },
 		"json": func(v interface{}) (string, error) {
@@ -154,44 +152,28 @@ func (h *handler) loadTemplates(state common.State) error {
 		"equalUsers": func(a, b users.User) bool {
 			return a.UserSpec == b.UserSpec
 		},
-		// THINK.
-		"containsCurrentUser": func(users []users.User) bool {
-			if state.CurrentUser.ID == 0 {
-				return false
-			}
-			for _, u := range users {
-				if u.UserSpec == state.CurrentUser.UserSpec {
-					return true
-				}
-			}
-			return false
+		"reactableID": func(commentID uint64) string {
+			return fmt.Sprintf("%d/%d", state.IssueID, commentID)
 		},
-		"reactionTooltip": func(reaction reactions.Reaction) string {
-			var users string
-			for i, u := range reaction.Users {
-				if i != 0 {
-					if i < len(reaction.Users)-1 {
-						users += ", "
-					} else {
-						users += " and "
-					}
-				}
-				if state.CurrentUser.ID != 0 && u.UserSpec == state.CurrentUser.UserSpec {
-					if i == 0 {
-						users += "You"
-					} else {
-						users += "you"
-					}
-				} else {
-					users += u.Login
-				}
-			}
-			// TODO: Handle when there are too many users and their details are left out by backend.
-			//       Count them and add "and N others" here.
-			return fmt.Sprintf("%v reacted with :%v:.", users, reaction.Reaction)
+		"reactionsBar": func(reactions []reactions.Reaction, reactableID string) (template.HTML, error) {
+			var buf bytes.Buffer
+			err := htmlg.RenderComponents(&buf, reactionscomponent.ReactionsBar{
+				Reactions:   reactions,
+				CurrentUser: state.CurrentUser,
+				ID:          reactableID,
+			})
+			return template.HTML(buf.String()), err
+		},
+		"newReaction": func(reactableID string) (template.HTML, error) {
+			var buf bytes.Buffer
+			err := htmlg.RenderComponents(&buf, reactionscomponent.NewReaction{
+				ReactableID: reactableID,
+			})
+			return template.HTML(buf.String()), err
 		},
 		"state": func() common.State { return state },
 	})
+	var err error
 	t, err = vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")
 	if err != nil {
 		return err
@@ -201,6 +183,7 @@ func (h *handler) loadTemplates(state common.State) error {
 }
 
 func (h *handler) state(req *http.Request) (state, error) {
+	vars := mux.Vars(req)
 	repoSpec, ok := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
 	if !ok {
 		return state{}, fmt.Errorf("request to %v doesn't have issuesapp.RepoSpecContextKey context key set", req.URL.Path)
@@ -217,15 +200,19 @@ func (h *handler) state(req *http.Request) (state, error) {
 	if reqPath == "/" {
 		reqPath = "" // This is needed so that absolute URL for root view, i.e., /issues, is "/issues" and not "/issues/" because of "/issues" + "/".
 	}
+	issueID, err := strconv.ParseUint(vars["id"], 10, 64)
+	if err != nil {
+		issueID = 0
+	}
 	b := state{
 		State: common.State{
-			BaseURI: baseURI,
-			ReqPath: reqPath,
+			BaseURI:  baseURI,
+			ReqPath:  reqPath,
+			RepoSpec: repoSpec,
+			IssueID:  issueID,
 		},
 	}
 	b.req = req
-	b.vars = mux.Vars(req)
-	b.repoSpec = repoSpec
 	b.HeadPre = h.HeadPre
 	if h.BodyTop != nil {
 		c, err := h.BodyTop(req)
@@ -259,12 +246,10 @@ func (h *handler) state(req *http.Request) (state, error) {
 }
 
 type state struct {
-	req  *http.Request
-	vars map[string]string
+	req *http.Request
 
-	repoSpec issues.RepoSpec
-	HeadPre  template.HTML
-	BodyTop  template.HTML
+	HeadPre template.HTML
+	BodyTop template.HTML
 
 	is issues.Service
 
@@ -289,7 +274,7 @@ func (s state) Issues() ([]issue, error) {
 	case string(issues.ClosedState):
 		opt.State = issues.StateFilter(issues.ClosedState)
 	}
-	is, err := s.is.List(s.req.Context(), s.repoSpec, opt)
+	is, err := s.is.List(s.req.Context(), s.RepoSpec, opt)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +307,7 @@ func (s state) augmentUnread(dis []issue) []issue {
 
 	// TODO: Consider starting to do this in background in parallel with s.is.List.
 	ns, err := s.notifications.List(s.req.Context(), notifications.ListOptions{
-		Repo: &notifications.RepoSpec{URI: s.repoSpec.URI},
+		Repo: &notifications.RepoSpec{URI: s.RepoSpec.URI},
 	})
 	if err != nil {
 		log.Println("augmentUnread: failed to s.notifications.List:", err)
@@ -345,11 +330,11 @@ func (s state) augmentUnread(dis []issue) []issue {
 }
 
 func (s state) OpenCount() (uint64, error) {
-	return s.is.Count(s.req.Context(), s.repoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
+	return s.is.Count(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
 }
 
 func (s state) ClosedCount() (uint64, error) {
-	return s.is.Count(s.req.Context(), s.repoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
+	return s.is.Count(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
 }
 
 func mustAtoi(s string) int {
@@ -361,15 +346,15 @@ func mustAtoi(s string) int {
 }
 
 func (s state) Issue() (issues.Issue, error) {
-	return s.is.Get(s.req.Context(), s.repoSpec, uint64(mustAtoi(s.vars["id"])))
+	return s.is.Get(s.req.Context(), s.RepoSpec, s.IssueID)
 }
 
 func (s state) Items() ([]issueItem, error) {
-	cs, err := s.is.ListComments(s.req.Context(), s.repoSpec, uint64(mustAtoi(s.vars["id"])), nil)
+	cs, err := s.is.ListComments(s.req.Context(), s.RepoSpec, s.IssueID, nil)
 	if err != nil {
 		return nil, err
 	}
-	es, err := s.is.ListEvents(s.req.Context(), s.repoSpec, uint64(mustAtoi(s.vars["id"])), nil)
+	es, err := s.is.ListEvents(s.req.Context(), s.RepoSpec, s.IssueID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -592,61 +577,6 @@ func (h *handler) postEditCommentHandler(w http.ResponseWriter, req *http.Reques
 	_, err := h.is.EditComment(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), cr)
 	if err != nil {
 		log.Println("is.EditComment:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (h *handler) postToggleReactionHandler(w http.ResponseWriter, req *http.Request) {
-	if err := req.ParseForm(); err != nil {
-		log.Println("req.ParseForm:", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	vars := mux.Vars(req)
-	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
-
-	reaction := reactions.EmojiID(req.PostForm.Get("reaction"))
-	cr := issues.CommentRequest{
-		ID:       uint64(mustAtoi(vars["commentID"])),
-		Reaction: &reaction,
-	}
-
-	comment, err := h.is.EditComment(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), cr)
-	if os.IsPermission(err) { // TODO: Move this to a higher level (and upate all other similar code too).
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	} else if err != nil {
-		log.Println("is.EditComment:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	state, err := h.state(req) // TODO: Don't need all state, just CurrentUser... Maybe shortcut it?
-	if err != nil {
-		log.Println("state:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	// Call loadTemplates to set updated containsCurrentUser, reactionTooltip template functions.
-	if err := h.loadTemplates(state.State); err != nil {
-		log.Println("loadTemplates:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// TODO: Deduplicate.
-	// {{template "reactions" .Reactions}}{{template "new-reaction" .ID}}
-	err = t.ExecuteTemplate(w, "reactions", comment.Reactions)
-	if err != nil {
-		log.Println("t.ExecuteTemplate:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = t.ExecuteTemplate(w, "new-reaction", comment.ID)
-	if err != nil {
-		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

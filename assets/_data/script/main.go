@@ -13,11 +13,13 @@ import (
 	"strings"
 
 	"github.com/gopherjs/gopherjs/js"
+	"github.com/shurcooL/frontend/reactionsmenu"
 	"github.com/shurcooL/frontend/tabsupport"
 	"github.com/shurcooL/github_flavored_markdown"
 	"github.com/shurcooL/go/gopherjs_http/jsutil"
 	"github.com/shurcooL/issues"
 	"github.com/shurcooL/issuesapp/common"
+	"github.com/shurcooL/issuesapp/httpclient"
 	"github.com/shurcooL/markdownfmt/markdown"
 	"honnef.co/go/js/dom"
 )
@@ -40,15 +42,18 @@ func main() {
 	js.Global.Set("ToggleIssueState", ToggleIssueState)
 	js.Global.Set("PostComment", PostComment)
 	js.Global.Set("EditComment", jsutil.Wrap(EditComment))
-	if !state.DisableReactions {
-		js.Global.Set("ShowReactionMenu", jsutil.Wrap(Reactions.Show))
-		js.Global.Set("ToggleReaction", jsutil.Wrap(Reactions.ToggleReaction))
-	}
 	js.Global.Set("TabSupportKeyDownHandler", jsutil.Wrap(tabsupport.KeyDownHandler))
 
-	document.AddEventListener("DOMContentLoaded", false, func(_ dom.Event) {
+	switch readyState := document.ReadyState(); readyState {
+	case "loading":
+		document.AddEventListener("DOMContentLoaded", false, func(dom.Event) {
+			go setup()
+		})
+	case "interactive", "complete":
 		setup()
-	})
+	default:
+		panic(fmt.Errorf("internal error: unexpected document.ReadyState value: %v", readyState))
+	}
 }
 
 func setup() {
@@ -66,7 +71,9 @@ func setup() {
 	}
 
 	if !state.DisableReactions {
-		setupReactionsMenu()
+		issuesService := httpclient.NewIssues("", "")
+		reactionsService := IssuesReactions{Issues: issuesService}
+		reactionsmenu.Setup(state.RepoSpec.URI, reactionsService, state.CurrentUser)
 	}
 }
 
