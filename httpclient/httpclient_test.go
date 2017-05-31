@@ -70,10 +70,10 @@ func init() {
 	http.Handle(httproute.EditComment, httputil.ErrorHandler(users, issuesAPIHandler.EditComment))
 }
 
-var issuesClient = httpclient.NewIssues("", "")
+var issuesClient = httpclient.NewIssues(nil, "", "")
 
 func ExampleIssues() {
-	issuesClient := httpclient.NewIssues("http", "localhost:8080")
+	issuesClient := httpclient.NewIssues(nil, "http", "localhost:8080")
 
 	// Now you can use any of issuesClient methods.
 

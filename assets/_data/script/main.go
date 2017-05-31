@@ -71,7 +71,7 @@ func setup() {
 	}
 
 	if !state.DisableReactions {
-		issuesService := httpclient.NewIssues("", "")
+		issuesService := httpclient.NewIssues(nil, "", "")
 		reactionsService := IssuesReactions{Issues: issuesService}
 		reactionsmenu.Setup(state.RepoSpec.URI, reactionsService, state.CurrentUser)
 	}

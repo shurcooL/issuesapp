@@ -15,9 +15,11 @@ import (
 )
 
 // NewIssues creates a client that implements issues.Service remotely over HTTP.
+// If a nil httpClient is provided, http.DefaultClient will be used.
 // scheme and host can be empty strings to target local service.
-func NewIssues(scheme, host string) *Issues {
+func NewIssues(httpClient *http.Client, scheme, host string) issues.Service {
 	return &Issues{
+		client: httpClient,
 		baseURL: &url.URL{
 			Scheme: scheme,
 			Host:   host,
@@ -28,7 +30,8 @@ func NewIssues(scheme, host string) *Issues {
 // Issues implements issues.Service remotely over HTTP.
 // Use NewIssues for creation, zero value of Issues is unfit for use.
 type Issues struct {
-	baseURL *url.URL // Base URL for API requests.
+	client  *http.Client // HTTP client for API requests. If nil, http.DefaultClient should be used.
+	baseURL *url.URL     // Base URL for API requests.
 }
 
 func (i *Issues) List(ctx context.Context, repo issues.RepoSpec, opt issues.IssueListOptions) ([]issues.Issue, error) {
@@ -39,7 +42,7 @@ func (i *Issues) List(ctx context.Context, repo issues.RepoSpec, opt issues.Issu
 			"OptState": {string(opt.State)},
 		}.Encode(),
 	}
-	resp, err := ctxhttp.Get(ctx, nil, i.baseURL.ResolveReference(&u).String())
+	resp, err := ctxhttp.Get(ctx, i.client, i.baseURL.ResolveReference(&u).String())
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +64,7 @@ func (i *Issues) Count(ctx context.Context, repo issues.RepoSpec, opt issues.Iss
 			"OptState": {string(opt.State)},
 		}.Encode(),
 	}
-	resp, err := ctxhttp.Get(ctx, nil, i.baseURL.ResolveReference(&u).String())
+	resp, err := ctxhttp.Get(ctx, i.client, i.baseURL.ResolveReference(&u).String())
 	if err != nil {
 		return 0, err
 	}
@@ -92,7 +95,7 @@ func (i *Issues) ListComments(ctx context.Context, repo issues.RepoSpec, id uint
 		Path:     httproute.ListComments,
 		RawQuery: q.Encode(),
 	}
-	resp, err := ctxhttp.Get(ctx, nil, i.baseURL.ResolveReference(&u).String())
+	resp, err := ctxhttp.Get(ctx, i.client, i.baseURL.ResolveReference(&u).String())
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +142,7 @@ func (i *Issues) EditComment(ctx context.Context, repo issues.RepoSpec, id uint6
 	if cr.Reaction != nil {
 		data.Set("Reaction", string(*cr.Reaction))
 	}
-	resp, err := ctxhttp.PostForm(ctx, nil, i.baseURL.ResolveReference(&u).String(), data)
+	resp, err := ctxhttp.PostForm(ctx, i.client, i.baseURL.ResolveReference(&u).String(), data)
 	if err != nil {
 		return issues.Comment{}, err
 	}
