@@ -18,6 +18,7 @@ import (
 	"github.com/shurcooL/issuesapp/httproute"
 	"github.com/shurcooL/users"
 	"golang.org/x/net/webdav"
+	"golang.org/x/oauth2"
 )
 
 type mockUsers struct {
@@ -72,8 +73,24 @@ func init() {
 
 var issuesClient = httpclient.NewIssues(nil, "", "")
 
-func ExampleIssues() {
+func ExampleNewIssues() {
 	issuesClient := httpclient.NewIssues(nil, "http", "localhost:8080")
+
+	// Now you can use any of issuesClient methods.
+
+	// Output:
+
+	_ = issuesClient
+}
+
+func ExampleNewIssues_authenticated() {
+	// HTTP client with authentication.
+	src := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: "... your access token ..."},
+	)
+	httpClient := oauth2.NewClient(context.Background(), src)
+
+	issuesClient := httpclient.NewIssues(httpClient, "http", "localhost:8080")
 
 	// Now you can use any of issuesClient methods.
 
