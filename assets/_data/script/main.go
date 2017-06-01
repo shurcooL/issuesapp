@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -21,6 +22,7 @@ import (
 	"github.com/shurcooL/issuesapp/common"
 	"github.com/shurcooL/issuesapp/httpclient"
 	"github.com/shurcooL/markdownfmt/markdown"
+	"golang.org/x/oauth2"
 	"honnef.co/go/js/dom"
 )
 
@@ -71,10 +73,26 @@ func setup() {
 	}
 
 	if !state.DisableReactions {
-		issuesService := httpclient.NewIssues(nil, "", "")
+		httpClient := httpClient()
+
+		issuesService := httpclient.NewIssues(httpClient, "", "")
 		reactionsService := IssuesReactions{Issues: issuesService}
 		reactionsmenu.Setup(state.RepoSpec.URI, reactionsService, state.CurrentUser)
 	}
+}
+
+// httpClient gives an *http.Client for making API requests.
+func httpClient() *http.Client {
+	cookies := &http.Request{Header: http.Header{"Cookie": {document.Cookie()}}}
+	if accessToken, err := cookies.Cookie("accessToken"); err == nil {
+		// Authenticated client.
+		src := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: accessToken.Value},
+		)
+		return oauth2.NewClient(context.Background(), src)
+	}
+	// Not authenticated client.
+	return http.DefaultClient
 }
 
 func setupIssueToggleButton() {
