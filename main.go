@@ -174,14 +174,11 @@ func (h *handler) loadTemplates(state common.State) error {
 		"render": func(c htmlg.Component) template.HTML {
 			return template.HTML(htmlg.Render(c.Render()...))
 		},
-		"issueBadge": func(state issues.State) htmlg.Component {
-			return component.IssueBadge{State: state}
-		},
-		"issueIcon": func(state issues.State) htmlg.Component {
-			return component.IssueIcon{State: state}
-		},
-		"time": func(t time.Time) htmlg.Component { return component.Time{Time: t} },
-		"user": func(u users.User) htmlg.Component { return component.User{User: u} },
+		"issueStateBadge": func(i issues.Issue) htmlg.Component { return component.IssueStateBadge{Issue: i} },
+		"issueBadge":      func(s issues.State) htmlg.Component { return component.IssueBadge{State: s} }, // Only needed for mock.
+		"issueIcon":       func(s issues.State) htmlg.Component { return component.IssueIcon{State: s} },
+		"time":            func(t time.Time) htmlg.Component { return component.Time{Time: t} },
+		"user":            func(u users.User) htmlg.Component { return component.User{User: u} },
 	})
 	var err error
 	t, err = vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")
@@ -514,7 +511,7 @@ func (h *handler) postEditIssueHandler(w http.ResponseWriter, req *http.Request)
 		var resp = make(url.Values)
 
 		var buf bytes.Buffer
-		err := t.ExecuteTemplate(&buf, "issue-state-badge", issue)
+		err := htmlg.RenderComponents(&buf, component.IssueStateBadge{Issue: issue})
 		if err != nil {
 			return err
 		}

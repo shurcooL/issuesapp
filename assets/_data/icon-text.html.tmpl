@@ -8,12 +8,6 @@
 	</body>
 </html>
 
-{{/* Dot is an issues.Issue. */}}
-{{define "issue-state-badge"}}
-	{{render (issueBadge .State)}}
-	<span>{{render (user .User)}} opened this issue {{render (time .CreatedAt)}}</span>
-{{end}}
-
 {{/* TODO: Try to use issues.OpenState and issues.ClosedState constants. */}}
 {{define "toggle-button"}}
 	{{if eq . "open"}}

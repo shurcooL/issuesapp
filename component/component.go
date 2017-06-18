@@ -13,6 +13,35 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
+// IssueStateBadge is a component that displays the state of an issue
+// with a badge, who opened it, and when it was opened.
+type IssueStateBadge struct {
+	Issue issues.Issue
+}
+
+func (i IssueStateBadge) Render() []*html.Node {
+	// TODO: Make this much nicer.
+	// {{render (issueBadge .State)}}
+	// <span style="margin-left: 4px;">{{render (user .User)}} opened this issue {{render (time .CreatedAt)}}</span>
+	var ns []*html.Node
+	ns = append(ns, IssueBadge{State: i.Issue.State}.Render()...)
+	span := &html.Node{
+		Type: html.ElementNode, Data: atom.Span.String(),
+		Attr: []html.Attribute{
+			{Key: atom.Style.String(), Val: "margin-left: 4px;"},
+		},
+	}
+	for _, n := range (User{i.Issue.User}).Render() {
+		span.AppendChild(n)
+	}
+	span.AppendChild(htmlg.Text(" opened this issue "))
+	for _, n := range (Time{i.Issue.CreatedAt}).Render() {
+		span.AppendChild(n)
+	}
+	ns = append(ns, span)
+	return ns
+}
+
 // IssueBadge is an issue badge, displaying the issue's state.
 type IssueBadge struct {
 	State issues.State
