@@ -15,7 +15,7 @@
 	<span class="octicon {{.Octicon}} event-icon"></span>
 	<div class="event-header">
 		<img class="inline-avatar" width="16" height="16" src="{{.Actor.AvatarURL}}">
-		{{template "user" .Actor}} {{.Text}} {{render (time .CreatedAt)}}
+		{{render (user .Actor)}} {{.Text}} {{render (time .CreatedAt)}}
 	</div>
 </div>
 {{end}}

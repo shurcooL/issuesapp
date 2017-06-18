@@ -8,6 +8,7 @@ import (
 	"github.com/shurcooL/htmlg"
 	"github.com/shurcooL/issues"
 	"github.com/shurcooL/octiconssvg"
+	"github.com/shurcooL/users"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
@@ -97,6 +98,26 @@ color: ` + color + `;`,
 		FirstChild: icon,
 	}
 	return []*html.Node{span}
+}
+
+// User is a user component.
+type User struct {
+	User users.User
+}
+
+func (u User) Render() []*html.Node {
+	// TODO: Make this much nicer.
+	// <a class="black" href="{{.HTMLURL}}" target="_blank"><strong>{{.Login}}</strong></a>
+	a := &html.Node{
+		Type: html.ElementNode, Data: atom.A.String(),
+		Attr: []html.Attribute{
+			{Key: atom.Class.String(), Val: "black"},
+			{Key: atom.Href.String(), Val: u.User.HTMLURL},
+			{Key: atom.Target.String(), Val: "_blank"},
+		},
+		FirstChild: htmlg.Strong(u.User.Login),
+	}
+	return []*html.Node{a}
 }
 
 // Time component that displays human friendly relative time (e.g., "2 hours ago", "yesterday"),

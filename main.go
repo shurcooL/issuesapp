@@ -181,6 +181,7 @@ func (h *handler) loadTemplates(state common.State) error {
 			return component.IssueIcon{State: state}
 		},
 		"time": func(t time.Time) htmlg.Component { return component.Time{Time: t} },
+		"user": func(u users.User) htmlg.Component { return component.User{User: u} },
 	})
 	var err error
 	t, err = vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")
