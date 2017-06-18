@@ -176,6 +176,9 @@ func (h *handler) loadTemplates(state common.State) error {
 		"issueBadge": func(state issues.State) htmlg.Component {
 			return component.IssueBadge{State: state}
 		},
+		"issueIcon": func(state issues.State) htmlg.Component {
+			return component.IssueIcon{State: state}
+		},
 	})
 	var err error
 	t, err = vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")

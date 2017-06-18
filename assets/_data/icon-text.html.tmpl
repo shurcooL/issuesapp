@@ -8,14 +8,6 @@
 	</body>
 </html>
 
-{{define "issue-icon"}}
-	{{if eq . "open"}}
-		<span style="margin-right: 6px; color: #6cc644;" class="octicon octicon-issue-opened"></span>
-	{{else if eq . "closed"}}
-		<span style="margin-right: 6px; color: #bd2c00;" class="octicon octicon-issue-closed"></span>
-	{{end}}
-{{end}}
-
 {{/* Dot is an issues.Issue. */}}
 {{define "issue-state-badge"}}
 	{{render (issueBadge .State)}}
