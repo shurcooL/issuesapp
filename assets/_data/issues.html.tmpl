@@ -42,7 +42,7 @@
 			<div style="flex-grow: 1;">
 				<div>
 					<a class="black" href="{{$.BaseURI}}/{{.ID}}"><strong>{{.Title}}</strong></a>
-					{{range .Labels}}{{template "label" .}}{{end}}
+					{{range .Labels}}{{render (label .)}}{{end}}
 				</div>
 				<div class="gray tiny">#{{.ID}} opened {{render (time .CreatedAt)}} by {{.User.Login}}</div>
 			</div>

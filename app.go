@@ -58,6 +58,7 @@ func run() error {
 		Comment: issues.Comment{
 			Body: "This is a test issue.",
 		},
+		Labels: []issues.Label{{Name: "label", Color: issues.RGB{R: 224, G: 235, B: 245}}},
 	})
 	if err != nil {
 		return err

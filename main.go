@@ -177,6 +177,7 @@ func (h *handler) loadTemplates(state common.State) error {
 		"issueStateBadge": func(i issues.Issue) htmlg.Component { return component.IssueStateBadge{Issue: i} },
 		"issueBadge":      func(s issues.State) htmlg.Component { return component.IssueBadge{State: s} }, // Only needed for mock.
 		"issueIcon":       func(s issues.State) htmlg.Component { return component.IssueIcon{State: s} },
+		"label":           func(l issues.Label) htmlg.Component { return component.Label{Label: l} },
 		"time":            func(t time.Time) htmlg.Component { return component.Time{Time: t} },
 		"user":            func(u users.User) htmlg.Component { return component.User{User: u} },
 	})

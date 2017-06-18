@@ -7,8 +7,7 @@ import (
 
 	"github.com/shurcooL/htmlg"
 	"github.com/shurcooL/issues"
-	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
+	"github.com/shurcooL/issuesapp/component"
 )
 
 // issue is an issues.Issue wrapper with display augmentations.
@@ -82,33 +81,12 @@ func (e event) Text() template.HTML {
 	case issues.Renamed:
 		return template.HTML(htmlg.Render(htmlg.Text("changed the title from "), htmlg.Strong(e.Event.Rename.From), htmlg.Text(" to "), htmlg.Strong(e.Event.Rename.To)))
 	case issues.Labeled:
-		return template.HTML(htmlg.Render(htmlg.Text("added the "), renderLabel(e.Event.Label), htmlg.Text(" label")))
+		return template.HTML(htmlg.Render(htmlg.Text("added the "), component.Label{Label: *e.Event.Label}.Render()[0], htmlg.Text(" label")))
 	case issues.Unlabeled:
-		return template.HTML(htmlg.Render(htmlg.Text("removed the "), renderLabel(e.Event.Label), htmlg.Text(" label")))
+		return template.HTML(htmlg.Render(htmlg.Text("removed the "), component.Label{Label: *e.Event.Label}.Render()[0], htmlg.Text(" label")))
 	default:
 		return template.HTML(htmlg.Render(htmlg.Text(string(e.Event.Type))))
 	}
-}
-
-// TODO: Dedup with assets/_data/label.html.tmpl template "label".
-func renderLabel(l *issues.Label) *html.Node {
-	// TODO: Make this much nicer.
-	// <span style="...">{{.Name}}</span>
-	span := &html.Node{
-		Type: html.ElementNode, Data: atom.Span.String(),
-		Attr: []html.Attribute{{
-			Key: atom.Style.String(),
-			Val: `display: inline-block;
-font-size: 12px;
-line-height: 1.2;
-padding: 0px 3px 0px 3px;
-border-radius: 2px;
-color: ` + l.FontColor() + `;
-background-color: ` + l.Color.HexString() + `;`,
-		}},
-	}
-	span.AppendChild(htmlg.Text(l.Name))
-	return span
 }
 
 func (e event) Octicon() string {

@@ -2,6 +2,7 @@
 package component
 
 import (
+	"image/color"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -127,6 +128,44 @@ color: ` + color + `;`,
 		FirstChild: icon,
 	}
 	return []*html.Node{span}
+}
+
+// Label is a label component.
+type Label struct {
+	Label issues.Label
+}
+
+func (l Label) Render() []*html.Node {
+	// TODO: Make this much nicer.
+	// <span style="...; color: {{.fontColor}}; background-color: {{.Color.HexString}};">{{.Name}}</span>
+	span := &html.Node{
+		Type: html.ElementNode, Data: atom.Span.String(),
+		Attr: []html.Attribute{{
+			Key: atom.Style.String(),
+			Val: `display: inline-block;
+font-size: 12px;
+line-height: 1.2;
+padding: 0px 3px 0px 3px;
+border-radius: 2px;
+color: ` + l.fontColor() + `;
+background-color: ` + l.Label.Color.HexString() + `;`,
+		}},
+	}
+	span.AppendChild(htmlg.Text(l.Label.Name))
+	return []*html.Node{span}
+}
+
+// fontColor returns one of "#fff" or "#000", whichever is a better fit for
+// the font color given the label color.
+func (l Label) fontColor() string {
+	// Convert label color to 8-bit grayscale, and make a decision based on that.
+	switch y := color.GrayModel.Convert(l.Label.Color).(color.Gray).Y; {
+	case y < 128:
+		return "#fff"
+	case y >= 128:
+		return "#000"
+	}
+	panic("unreachable")
 }
 
 // User is a user component.
