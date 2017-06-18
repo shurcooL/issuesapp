@@ -23,6 +23,7 @@ import (
 	"github.com/shurcooL/issues"
 	"github.com/shurcooL/issuesapp/assets"
 	"github.com/shurcooL/issuesapp/common"
+	"github.com/shurcooL/issuesapp/component"
 	"github.com/shurcooL/notifications"
 	"github.com/shurcooL/reactions"
 	reactionscomponent "github.com/shurcooL/reactions/component"
@@ -171,6 +172,9 @@ func (h *handler) loadTemplates(state common.State) error {
 
 		"render": func(c htmlg.Component) template.HTML {
 			return template.HTML(htmlg.Render(c.Render()...))
+		},
+		"issueBadge": func(state issues.State) htmlg.Component {
+			return component.IssueBadge{State: state}
 		},
 	})
 	var err error
