@@ -25,7 +25,7 @@
 						{{with .Edited}} · <span style="cursor: default;" title="{{.By.Login}} edited this comment {{reltime .At}}.">edited{{if not (equalUsers $.User .By)}} by {{.By.Login}}{{end}}</span>{{end}}
 					</span>
 					{{if (not state.DisableReactions)}}
-						<span class="right-icon">{{newReaction (reactableID .ID)}}</span>
+						<span class="right-icon">{{render (newReaction (reactableID .ID))}}</span>
 					{{end}}
 					{{if .Editable}}<span class="right-icon"><a href="javascript:" title="Edit" onclick="EditComment({{`edit` | json}}, this);"><span class="octicon octicon-pencil"></span></a></span>{{end}}
 				</div>
@@ -45,7 +45,7 @@
 		{{template "edit-comment" .}}
 	</div>
 	{{if (not state.DisableReactions)}}
-		{{reactionsBar .Reactions (reactableID .ID)}}
+		{{render (reactionsBar .Reactions (reactableID .ID))}}
 	{{end}}
 </div>
 {{end}}

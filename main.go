@@ -155,23 +155,23 @@ func (h *handler) loadTemplates(state common.State) error {
 		"reactableID": func(commentID uint64) string {
 			return fmt.Sprintf("%d/%d", state.IssueID, commentID)
 		},
-		"reactionsBar": func(reactions []reactions.Reaction, reactableID string) (template.HTML, error) {
-			var buf bytes.Buffer
-			err := htmlg.RenderComponents(&buf, reactionscomponent.ReactionsBar{
+		"reactionsBar": func(reactions []reactions.Reaction, reactableID string) htmlg.Component {
+			return reactionscomponent.ReactionsBar{
 				Reactions:   reactions,
 				CurrentUser: state.CurrentUser,
 				ID:          reactableID,
-			})
-			return template.HTML(buf.String()), err
+			}
 		},
-		"newReaction": func(reactableID string) (template.HTML, error) {
-			var buf bytes.Buffer
-			err := htmlg.RenderComponents(&buf, reactionscomponent.NewReaction{
+		"newReaction": func(reactableID string) htmlg.Component {
+			return reactionscomponent.NewReaction{
 				ReactableID: reactableID,
-			})
-			return template.HTML(buf.String()), err
+			}
 		},
 		"state": func() common.State { return state },
+
+		"render": func(c htmlg.Component) template.HTML {
+			return template.HTML(htmlg.Render(c.Render()...))
+		},
 	})
 	var err error
 	t, err = vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")
