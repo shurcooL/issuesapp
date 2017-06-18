@@ -11,7 +11,7 @@
 {{/* Dot is an issues.Issue. */}}
 {{define "issue-state-badge"}}
 	{{render (issueBadge .State)}}
-	<span>{{template "user" .User}} opened this issue {{template "time" .CreatedAt}}</span>
+	<span>{{template "user" .User}} opened this issue {{render (time .CreatedAt)}}</span>
 {{end}}
 
 {{/* TODO: Try to use issues.OpenState and issues.ClosedState constants. */}}

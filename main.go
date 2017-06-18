@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/gorilla/mux"
@@ -179,6 +180,7 @@ func (h *handler) loadTemplates(state common.State) error {
 		"issueIcon": func(state issues.State) htmlg.Component {
 			return component.IssueIcon{State: state}
 		},
+		"time": func(t time.Time) htmlg.Component { return component.Time{Time: t} },
 	})
 	var err error
 	t, err = vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")

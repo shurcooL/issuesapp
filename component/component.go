@@ -2,6 +2,9 @@
 package component
 
 import (
+	"time"
+
+	"github.com/dustin/go-humanize"
 	"github.com/shurcooL/htmlg"
 	"github.com/shurcooL/issues"
 	"github.com/shurcooL/octiconssvg"
@@ -94,4 +97,23 @@ color: ` + color + `;`,
 		FirstChild: icon,
 	}
 	return []*html.Node{span}
+}
+
+// Time component that displays human friendly relative time (e.g., "2 hours ago", "yesterday"),
+// but also contains a tooltip with the full absolute time (e.g., "Jan 2, 2006, 3:04 PM MST").
+//
+// TODO: Factor out, it's the same as in notificationsapp.
+type Time struct {
+	Time time.Time
+}
+
+func (t Time) Render() []*html.Node {
+	// TODO: Make this much nicer.
+	// <abbr title="{{.Format "Jan 2, 2006, 3:04 PM MST"}}">{{reltime .}}</abbr>
+	abbr := &html.Node{
+		Type: html.ElementNode, Data: atom.Abbr.String(),
+		Attr:       []html.Attribute{{Key: atom.Title.String(), Val: t.Time.Format("Jan 2, 2006, 3:04 PM MST")}},
+		FirstChild: htmlg.Text(humanize.Time(t.Time)),
+	}
+	return []*html.Node{abbr}
 }
