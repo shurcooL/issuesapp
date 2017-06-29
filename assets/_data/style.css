@@ -157,20 +157,8 @@ textarea.comment-editor:focus {
 	margin-right: 10px;
 	width: 32px;
 	height: 32px;
-	line-height: 28px;
-	color: #767676;
-	background-color: #f3f3f3;
-	text-align: center;
-	border: 2px solid #fff;
+	display: flex; justify-content: center; align-items: center;
 	border-radius: 50%;
-}
-.event-closed .event-icon {
-	color: #fff;
-	background-color: #bd2c00;
-}
-.event-reopened .event-icon {
-	color: #fff;
-	background-color: #6cc644;
 }
 
 nav a {

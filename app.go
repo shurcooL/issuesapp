@@ -72,6 +72,20 @@ func run() error {
 			return err
 		}
 	}
+	for _, state := range []issues.State{issues.ClosedState, issues.OpenState} {
+		_, _, err = service.Edit(context.Background(), repo, 1, issues.IssueRequest{
+			State: &state,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	_, err = service.CreateComment(context.Background(), repo, 1, issues.Comment{
+		Body: "This is a test comment.",
+	})
+	if err != nil {
+		return err
+	}
 
 	// Register HTTP API endpoints.
 	apiHandler := httphandler.Issues{Issues: service}

@@ -8,6 +8,9 @@ import (
 	"github.com/shurcooL/htmlg"
 	"github.com/shurcooL/issues"
 	"github.com/shurcooL/issuesapp/component"
+	"github.com/shurcooL/octiconssvg"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 // issue is an issues.Issue wrapper with display augmentations.
@@ -91,19 +94,35 @@ func (e event) Text() template.HTML {
 	}
 }
 
-func (e event) Octicon() string {
+func (e event) Icon() template.HTML {
+	var (
+		icon            *html.Node
+		color           = "#767676"
+		backgroundColor = "#f3f3f3"
+	)
 	switch e.Event.Type {
 	case issues.Reopened:
-		return "octicon-primitive-dot"
+		icon = octiconssvg.PrimitiveDot()
+		color, backgroundColor = "#fff", "#6cc644"
 	case issues.Closed:
-		return "octicon-circle-slash"
+		icon = octiconssvg.CircleSlash()
+		color, backgroundColor = "#fff", "#bd2c00"
 	case issues.Renamed:
-		return "octicon-pencil"
+		icon = octiconssvg.Pencil()
 	case issues.Labeled, issues.Unlabeled:
-		return "octicon-tag"
+		icon = octiconssvg.Tag()
 	case issues.CommentDeleted:
-		return "octicon-x"
+		icon = octiconssvg.X()
 	default:
-		return "octicon-primitive-dot"
+		icon = octiconssvg.PrimitiveDot()
 	}
+	span := &html.Node{
+		Type: html.ElementNode, Data: atom.Span.String(),
+		Attr: []html.Attribute{
+			{Key: atom.Class.String(), Val: "event-icon"},
+			{Key: atom.Style.String(), Val: fmt.Sprintf("color: %s; background-color: %s;", color, backgroundColor)},
+		},
+		FirstChild: icon,
+	}
+	return template.HTML(htmlg.Render(span))
 }

@@ -49,6 +49,7 @@ var RepoSpecContextKey = &contextKey{"RepoSpec"}
 // The associated value will be of type string.
 var BaseURIContextKey = &contextKey{"BaseURI"}
 
+// Options for configuring issues app.
 type Options struct {
 	Notifications    notifications.Service // If not nil, issues containing unread notifications are highlighted.
 	DisableReactions bool                  // Disable all support for displaying and toggling reactions.
