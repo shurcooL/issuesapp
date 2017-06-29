@@ -84,6 +84,8 @@ func (e event) Text() template.HTML {
 		return template.HTML(htmlg.Render(htmlg.Text("added the "), component.Label{Label: *e.Event.Label}.Render()[0], htmlg.Text(" label")))
 	case issues.Unlabeled:
 		return template.HTML(htmlg.Render(htmlg.Text("removed the "), component.Label{Label: *e.Event.Label}.Render()[0], htmlg.Text(" label")))
+	case issues.CommentDeleted:
+		return template.HTML(htmlg.Render(htmlg.Text("deleted a comment")))
 	default:
 		return template.HTML(htmlg.Render(htmlg.Text(string(e.Event.Type))))
 	}
@@ -99,6 +101,8 @@ func (e event) Octicon() string {
 		return "octicon-pencil"
 	case issues.Labeled, issues.Unlabeled:
 		return "octicon-tag"
+	case issues.CommentDeleted:
+		return "octicon-x"
 	default:
 		return "octicon-primitive-dot"
 	}
