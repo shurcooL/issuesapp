@@ -101,6 +101,7 @@ type handler struct {
 // 	http.Handle(httproute.List, errorHandler(apiHandler.List))
 // 	http.Handle(httproute.Count, errorHandler(apiHandler.Count))
 // 	http.Handle(httproute.ListComments, errorHandler(apiHandler.ListComments))
+// 	http.Handle(httproute.ListEvents, errorHandler(apiHandler.ListEvents))
 // 	http.Handle(httproute.EditComment, errorHandler(apiHandler.EditComment))
 func New(service issues.Service, usersService users.Service, opt Options) http.Handler {
 	handler := &handler{

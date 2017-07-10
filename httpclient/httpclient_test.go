@@ -68,6 +68,7 @@ func init() {
 	http.Handle(httproute.List, httputil.ErrorHandler(users, issuesAPIHandler.List))
 	http.Handle(httproute.Count, httputil.ErrorHandler(users, issuesAPIHandler.Count))
 	http.Handle(httproute.ListComments, httputil.ErrorHandler(users, issuesAPIHandler.ListComments))
+	http.Handle(httproute.ListEvents, httputil.ErrorHandler(users, issuesAPIHandler.ListEvents))
 	http.Handle(httproute.EditComment, httputil.ErrorHandler(users, issuesAPIHandler.EditComment))
 }
 

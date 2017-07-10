@@ -109,8 +109,31 @@ func (i *Issues) ListComments(ctx context.Context, repo issues.RepoSpec, id uint
 	return cs, err
 }
 
-func (*Issues) ListEvents(_ context.Context, repo issues.RepoSpec, id uint64, opt *issues.ListOptions) ([]issues.Event, error) {
-	return nil, fmt.Errorf("ListEvents: not implemented")
+func (i *Issues) ListEvents(ctx context.Context, repo issues.RepoSpec, id uint64, opt *issues.ListOptions) ([]issues.Event, error) {
+	q := url.Values{
+		"RepoURI": {repo.URI},
+		"ID":      {fmt.Sprint(id)},
+	}
+	if opt != nil {
+		q.Set("Opt.Start", fmt.Sprint(opt.Start))
+		q.Set("Opt.Length", fmt.Sprint(opt.Length))
+	}
+	u := url.URL{
+		Path:     httproute.ListEvents,
+		RawQuery: q.Encode(),
+	}
+	resp, err := ctxhttp.Get(ctx, i.client, i.baseURL.ResolveReference(&u).String())
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("did not get acceptable status code: %v body: %q", resp.Status, body)
+	}
+	var es []issues.Event
+	err = json.NewDecoder(resp.Body).Decode(&es)
+	return es, err
 }
 
 func (*Issues) Create(_ context.Context, repo issues.RepoSpec, issue issues.Issue) (issues.Issue, error) {

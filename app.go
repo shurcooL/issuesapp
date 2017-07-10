@@ -92,6 +92,7 @@ func run() error {
 	http.Handle(httproute.List, httputil.ErrorHandler(users, apiHandler.List))
 	http.Handle(httproute.Count, httputil.ErrorHandler(users, apiHandler.Count))
 	http.Handle(httproute.ListComments, httputil.ErrorHandler(users, apiHandler.ListComments))
+	http.Handle(httproute.ListEvents, httputil.ErrorHandler(users, apiHandler.ListEvents))
 	http.Handle(httproute.EditComment, httputil.ErrorHandler(users, apiHandler.EditComment))
 
 	opt := issuesapp.Options{

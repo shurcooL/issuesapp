@@ -74,6 +74,36 @@ func (h Issues) ListComments(w http.ResponseWriter, req *http.Request) error {
 	return httperror.JSONResponse{V: is}
 }
 
+func (h Issues) ListEvents(w http.ResponseWriter, req *http.Request) error {
+	if req.Method != "GET" {
+		return httperror.Method{Allowed: []string{"GET"}}
+	}
+	q := req.URL.Query() // TODO: Automate this conversion process.
+	repo := issues.RepoSpec{URI: q.Get("RepoURI")}
+	id, err := strconv.ParseUint(q.Get("ID"), 10, 64)
+	if err != nil {
+		return httperror.BadRequest{Err: fmt.Errorf("parsing ID query parameter: %v", err)}
+	}
+	var opt *issues.ListOptions
+	if s, err := strconv.Atoi(q.Get("Opt.Start")); err == nil {
+		if opt == nil {
+			opt = new(issues.ListOptions)
+		}
+		opt.Start = s
+	}
+	if l, err := strconv.Atoi(q.Get("Opt.Length")); err == nil {
+		if opt == nil {
+			opt = new(issues.ListOptions)
+		}
+		opt.Length = l
+	}
+	es, err := h.Issues.ListEvents(req.Context(), repo, id, opt)
+	if err != nil {
+		return err
+	}
+	return httperror.JSONResponse{V: es}
+}
+
 func (h Issues) EditComment(w http.ResponseWriter, req *http.Request) error {
 	if req.Method != "POST" {
 		return httperror.Method{Allowed: []string{"POST"}}
