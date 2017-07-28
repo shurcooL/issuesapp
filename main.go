@@ -54,8 +54,8 @@ type Options struct {
 	Notifications    notifications.Service // If not nil, issues containing unread notifications are highlighted.
 	DisableReactions bool                  // Disable all support for displaying and toggling reactions.
 
-	HeadPre template.HTML
-	BodyPre string // An html/template definition of "body-pre" template.
+	HeadPre, HeadPost template.HTML
+	BodyPre           string // An html/template definition of "body-pre" template.
 
 	// BodyTop provides components to include on top of <body> of page rendered for req. It can be nil.
 	BodyTop func(req *http.Request) ([]htmlg.Component, error)
@@ -224,6 +224,7 @@ func (h *handler) state(req *http.Request) (state, error) {
 	}
 	b.req = req
 	b.HeadPre = h.HeadPre
+	b.HeadPost = h.HeadPost
 	if h.BodyTop != nil {
 		c, err := h.BodyTop(req)
 		if err != nil {
@@ -258,8 +259,8 @@ func (h *handler) state(req *http.Request) (state, error) {
 type state struct {
 	req *http.Request
 
-	HeadPre template.HTML
-	BodyTop template.HTML
+	HeadPre, HeadPost template.HTML
+	BodyTop           template.HTML
 
 	is issues.Service
 
