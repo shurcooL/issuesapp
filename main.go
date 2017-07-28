@@ -130,8 +130,10 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	h.Handle("/", r)
 	assetsFileServer := httpgzip.FileServer(assets.Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
 	h.Handle("/assets/", assetsFileServer)
-	h.Handle("/assets/octicons/", http.StripPrefix("/assets", assetsFileServer))
-	h.Handle("/assets/gfm/", http.StripPrefix("/assets", assetsFileServer))
+	octiconsFileServer := httpgzip.FileServer(assets.Octicons, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
+	h.Handle("/assets/octicons/", http.StripPrefix("/assets/octicons", octiconsFileServer))
+	gfmFileServer := httpgzip.FileServer(assets.GFMStyle, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
+	h.Handle("/assets/gfm/", http.StripPrefix("/assets/gfm", gfmFileServer))
 
 	handler.Handler = h
 	return handler
