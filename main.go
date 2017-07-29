@@ -26,9 +26,11 @@ import (
 	"github.com/shurcooL/issuesapp/common"
 	"github.com/shurcooL/issuesapp/component"
 	"github.com/shurcooL/notifications"
+	"github.com/shurcooL/octiconssvg"
 	"github.com/shurcooL/reactions"
 	reactionscomponent "github.com/shurcooL/reactions/component"
 	"github.com/shurcooL/users"
+	"golang.org/x/net/html"
 )
 
 // contextKey is a value for use with context.WithValue. It's used as
@@ -130,8 +132,6 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	h.Handle("/", r)
 	assetsFileServer := httpgzip.FileServer(assets.Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
 	h.Handle("/assets/", assetsFileServer)
-	octiconsFileServer := httpgzip.FileServer(assets.Octicons, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
-	h.Handle("/assets/octicons/", http.StripPrefix("/assets/octicons", octiconsFileServer))
 	gfmFileServer := httpgzip.FileServer(assets.GFMStyle, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
 	h.Handle("/assets/gfm/", http.StripPrefix("/assets/gfm", gfmFileServer))
 
@@ -174,6 +174,19 @@ func (h *handler) loadTemplates(state common.State) error {
 			}
 		},
 		"state": func() common.State { return state },
+
+		"octicon": func(name string) (template.HTML, error) {
+			icon := octiconssvg.Icon(name)
+			if icon == nil {
+				return "", fmt.Errorf("%q is not a valid Octicon symbol name", name)
+			}
+			var buf bytes.Buffer
+			err := html.Render(&buf, icon)
+			if err != nil {
+				return "", err
+			}
+			return template.HTML(buf.String()), nil
+		},
 
 		"render": func(c htmlg.Component) template.HTML {
 			return template.HTML(htmlg.Render(c.Render()...))

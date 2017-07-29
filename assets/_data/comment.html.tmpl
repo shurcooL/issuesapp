@@ -27,7 +27,7 @@
 					{{if (not state.DisableReactions)}}
 						<span class="right-icon">{{render (newReaction (reactableID .ID))}}</span>
 					{{end}}
-					{{if .Editable}}<span class="right-icon"><a href="javascript:" title="Edit" onclick="EditComment({{`edit` | json}}, this);"><span class="octicon octicon-pencil"></span></a></span>{{end}}
+					{{if .Editable}}<span class="right-icon"><a href="javascript:" title="Edit" onclick="EditComment({{`edit` | json}}, this);">{{octicon "pencil"}}</a></span>{{end}}
 				</div>
 				<div class="list-entry-body">
 					<div class="markdown-body">

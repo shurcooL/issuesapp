@@ -8,14 +8,28 @@ import (
 
 	"github.com/shurcooL/htmlg"
 	"github.com/shurcooL/issues"
+	"github.com/shurcooL/octiconssvg"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
 
 // TODO: Factor out somehow...
-var tabsTmpl = template.Must(template.New("").Parse(`
-{{define "open-issue-count"}}<span><span style="margin-right: 4px;" class="octicon octicon-issue-opened"></span>{{.OpenCount}} Open</span>{{end}}
-{{define "closed-issue-count"}}<span style="margin-left: 12px;"><span style="margin-right: 4px;" class="octicon octicon-check"></span>{{.ClosedCount}} Closed</span>{{end}}
+var tabsTmpl = template.Must(template.New("").Funcs(template.FuncMap{
+	"octicon": func(name string) (template.HTML, error) {
+		icon := octiconssvg.Icon(name)
+		if icon == nil {
+			return "", fmt.Errorf("%q is not a valid Octicon symbol name", name)
+		}
+		var buf bytes.Buffer
+		err := html.Render(&buf, icon)
+		if err != nil {
+			return "", err
+		}
+		return template.HTML(buf.String()), nil
+	},
+}).Parse(`
+{{define "open-issue-count"}}<span><span style="margin-right: 4px;">{{octicon "issue-opened"}}</span>{{.OpenCount}} Open</span>{{end}}
+{{define "closed-issue-count"}}<span style="margin-left: 12px;"><span style="margin-right: 4px;">{{octicon "check"}}</span>{{.ClosedCount}} Closed</span>{{end}}
 `))
 
 const (

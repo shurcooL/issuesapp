@@ -12,7 +12,6 @@
 
 {{define "scriptless-head"}}
 	{{.HeadPre}}
-	<link href="{{.BaseURI}}/assets/octicons/octicons.min.css" rel="stylesheet" type="text/css" />
 	<link href="{{.BaseURI}}/assets/gfm/gfm.css" rel="stylesheet" type="text/css" />
 	<link href="{{.BaseURI}}/assets/style.css" rel="stylesheet" type="text/css" />
 	{{.HeadPost}}
@@ -47,7 +46,7 @@
 				</div>
 				<div class="gray tiny">#{{.ID}} opened {{render (time .CreatedAt)}} by {{.User.Login}}</div>
 			</div>
-			<span title="{{.Replies}} replies" class="tiny {{if .Replies}}gray{{else}}lightgray{{end}}"><span class="octicon octicon-comment"></span> {{.Replies}}</span>
+			<span title="{{.Replies}} replies" class="tiny {{if .Replies}}gray{{else}}lightgray{{end}}">{{octicon "comment"}} {{.Replies}}</span>
 		</div>
 	</div>
 	{{end}}{{else}}
