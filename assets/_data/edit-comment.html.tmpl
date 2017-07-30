@@ -1,14 +1,3 @@
-<html>
-	<head>
-		{{template "head" .}}
-	</head>
-	<body>
-		<div style="background-color: lightgray;">content</div>
-		{{template "edit-comment" .}}
-		<div style="background-color: lightgray;">content</div>
-	</body>
-</html>
-
 {{/* TODO: Dedup with new-comment, only buttons differ, so factor them out. */}}
 {{define "edit-comment"}}
 <div style="display: flex;" class="edit-container list-entry">

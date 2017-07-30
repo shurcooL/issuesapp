@@ -17,7 +17,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/gorilla/mux"
 	"github.com/shurcooL/github_flavored_markdown"
-	"github.com/shurcooL/go-goon"
 	"github.com/shurcooL/htmlg"
 	"github.com/shurcooL/httpfs/html/vfstemplate"
 	"github.com/shurcooL/httpgzip"
@@ -117,8 +116,6 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 		log.Fatalln("loadTemplates:", err)
 	}
 
-	h := http.NewServeMux()
-	h.HandleFunc("/mock/", handler.mockHandler)
 	r := mux.NewRouter()
 	// TODO: Make redirection work.
 	//r.StrictSlash(true) // THINK: Can't use this due to redirect not taking baseURI into account.
@@ -129,6 +126,7 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	r.HandleFunc("/{id:[0-9]+}/comment/{commentID:[0-9]+}", handler.postEditCommentHandler).Methods("POST")
 	r.HandleFunc("/new", handler.createIssueHandler).Methods("GET")
 	r.HandleFunc("/new", handler.postCreateIssueHandler).Methods("POST")
+	h := http.NewServeMux()
 	h.Handle("/", r)
 	assetsFileServer := httpgzip.FileServer(assets.Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
 	h.Handle("/assets/", assetsFileServer)
@@ -143,7 +141,6 @@ var t *template.Template
 
 func (h *handler) loadTemplates(state common.State) error {
 	t = template.New("").Funcs(template.FuncMap{
-		"dump": func(v interface{}) string { return goon.Sdump(v) },
 		"json": func(v interface{}) (string, error) {
 			b, err := json.Marshal(v)
 			return string(b), err
@@ -192,7 +189,6 @@ func (h *handler) loadTemplates(state common.State) error {
 			return template.HTML(htmlg.Render(c.Render()...))
 		},
 		"issueStateBadge": func(i issues.Issue) htmlg.Component { return component.IssueStateBadge{Issue: i} },
-		"issueBadge":      func(s issues.State) htmlg.Component { return component.IssueBadge{State: s} }, // Only needed for mock.
 		"issueIcon":       func(s issues.State) htmlg.Component { return component.IssueIcon{State: s} },
 		"label":           func(l issues.Label) htmlg.Component { return component.Label{Label: l} },
 		"time":            func(t time.Time) htmlg.Component { return component.Time{Time: t} },

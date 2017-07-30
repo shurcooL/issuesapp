@@ -1,13 +1,3 @@
-<html>
-	<head>
-		{{template "head" .}}
-	</head>
-	<body>
-		<div>{{render (issueBadge "open")}}</div>
-		<div>{{render (issueBadge "closed")}}</div>
-	</body>
-</html>
-
 {{/* TODO: Try to use issues.OpenState and issues.ClosedState constants. */}}
 {{define "toggle-button"}}
 	{{if eq . "open"}}

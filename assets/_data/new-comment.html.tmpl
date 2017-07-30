@@ -1,14 +1,3 @@
-<html>
-	<head>
-		{{template "head" .}}
-	</head>
-	<body>
-		<div style="background-color: lightgray;">content</div>
-		{{template "new-comment" .}}
-		<div style="background-color: lightgray;">content</div>
-	</body>
-</html>
-
 {{define "new-comment"}}
 {{if .CurrentUser.ID}}
 	<div id="new-comment-container" class="edit-container list-entry" style="display: flex;">

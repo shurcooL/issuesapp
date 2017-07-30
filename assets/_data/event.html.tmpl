@@ -1,15 +1,3 @@
-<html>
-	<head>
-		{{template "head" .}}
-	</head>
-	<body>
-		<div style="background-color: lightgray;">content</div>
-		{{template "event" .Event}}
-		<div style="background-color: lightgray;">content</div>
-		<pre>{{dump .Event}}</pre>
-	</body>
-</html>
-
 {{define "event"}}
 <div class="list-entry event event-{{.Type}}">
 	{{.Icon}}
