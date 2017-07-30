@@ -68,6 +68,9 @@ type handler struct {
 	is issues.Service
 	us users.Service
 
+	// static is loaded once in New, and is only for rendering templates that don't use state.
+	static *template.Template
+
 	Options
 }
 
@@ -105,15 +108,16 @@ type handler struct {
 // 	http.Handle(httproute.ListEvents, errorHandler(apiHandler.ListEvents))
 // 	http.Handle(httproute.EditComment, errorHandler(apiHandler.EditComment))
 func New(service issues.Service, usersService users.Service, opt Options) http.Handler {
+	static, err := loadTemplates(common.State{}, opt.BodyPre)
+	if err != nil {
+		log.Fatalln("loadTemplates failed:", err)
+	}
+
 	handler := &handler{
 		is:      service,
 		us:      usersService,
+		static:  static,
 		Options: opt,
-	}
-
-	err := handler.loadTemplates(common.State{})
-	if err != nil {
-		log.Fatalln("loadTemplates:", err)
 	}
 
 	r := mux.NewRouter()
@@ -137,10 +141,8 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	return handler
 }
 
-var t *template.Template
-
-func (h *handler) loadTemplates(state common.State) error {
-	t = template.New("").Funcs(template.FuncMap{
+func loadTemplates(state common.State, bodyPre string) (*template.Template, error) {
+	t := template.New("").Funcs(template.FuncMap{
 		"json": func(v interface{}) (string, error) {
 			b, err := json.Marshal(v)
 			return string(b), err
@@ -194,13 +196,11 @@ func (h *handler) loadTemplates(state common.State) error {
 		"time":            func(t time.Time) htmlg.Component { return component.Time{Time: t} },
 		"user":            func(u users.User) htmlg.Component { return component.User{User: u} },
 	})
-	var err error
-	t, err = vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")
+	t, err := vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	t, err = t.New("body-pre").Parse(h.BodyPre)
-	return err
+	return t.New("body-pre").Parse(bodyPre)
 }
 
 func (h *handler) state(req *http.Request) (state, error) {
@@ -392,12 +392,6 @@ func (s state) ForceIssuesApp() bool {
 }
 
 func (h *handler) issuesHandler(w http.ResponseWriter, req *http.Request) {
-	if err := h.loadTemplates(common.State{}); err != nil {
-		log.Println("loadTemplates:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	state, err := h.state(req)
 	if err != nil {
 		log.Println("state:", err)
@@ -405,7 +399,7 @@ func (h *handler) issuesHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = t.ExecuteTemplate(w, "issues.html.tmpl", &state)
+	err = h.static.ExecuteTemplate(w, "issues.html.tmpl", &state)
 	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -420,8 +414,9 @@ func (h *handler) issueHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	// THINK.
-	if err := h.loadTemplates(state.State); err != nil {
+	// Call loadTemplates to set updated reactionsBar, etc., template functions.
+	t, err := loadTemplates(state.State, h.Options.BodyPre)
+	if err != nil {
 		log.Println("loadTemplates:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -442,12 +437,6 @@ func (h *handler) issueHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) createIssueHandler(w http.ResponseWriter, req *http.Request) {
-	if err := h.loadTemplates(common.State{}); err != nil {
-		log.Println("loadTemplates:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	state, err := h.state(req)
 	if err != nil {
 		log.Println("state:", err)
@@ -459,7 +448,7 @@ func (h *handler) createIssueHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = t.ExecuteTemplate(w, "new-issue.html.tmpl", &state)
+	err = h.static.ExecuteTemplate(w, "new-issue.html.tmpl", &state)
 	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -525,7 +514,7 @@ func (h *handler) postEditIssueHandler(w http.ResponseWriter, req *http.Request)
 		resp.Set("issue-state-badge", buf.String())
 
 		buf.Reset()
-		err = t.ExecuteTemplate(&buf, "toggle-button", issue.State)
+		err = h.static.ExecuteTemplate(&buf, "toggle-button", issue.State)
 		if err != nil {
 			return err
 		}
@@ -533,7 +522,7 @@ func (h *handler) postEditIssueHandler(w http.ResponseWriter, req *http.Request)
 
 		for _, e := range events {
 			buf.Reset()
-			err = t.ExecuteTemplate(&buf, "event", event{e})
+			err = h.static.ExecuteTemplate(&buf, "event", event{e})
 			if err != nil {
 				return err
 			}
@@ -572,7 +561,7 @@ func (h *handler) postCommentHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = t.ExecuteTemplate(w, "comment", comment)
+	err = h.static.ExecuteTemplate(w, "comment", comment)
 	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
