@@ -1,5 +1,6 @@
 // +build js
 
+// script is the frontend script for issuesapp.
 package main
 
 import (
