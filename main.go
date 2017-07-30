@@ -491,23 +491,53 @@ type state struct {
 	common.State
 }
 
-func (s state) Tab() (issues.State, error) {
-	return tab(s.req.URL.Query())
+const (
+	// stateQueryKey is name of query key for controlling issue state filter.
+	stateQueryKey = "state"
+)
+
+func (s state) IssuesNav() (htmlg.Component, error) {
+	openCount, err := s.is.Count(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
+	if err != nil {
+		return nil, err
+	}
+	closedCount, err := s.is.Count(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
+	if err != nil {
+		return nil, err
+	}
+	return component.IssuesNav{
+		OpenCount:     openCount,
+		ClosedCount:   closedCount,
+		Path:          s.BaseURI + s.ReqPath,
+		Query:         s.req.URL.Query(),
+		StateQueryKey: stateQueryKey,
+	}, nil
 }
 
-func (s state) Tabs() (template.HTML, error) {
-	return tabs(&s, s.BaseURI+s.ReqPath, s.req.URL.RawQuery)
+func (s state) Tab() (issues.StateFilter, error) {
+	return s.tabStateFilter()
+}
+
+func (s state) tabStateFilter() (issues.StateFilter, error) {
+	selectedTabName := s.req.URL.Query().Get(stateQueryKey)
+	switch selectedTabName {
+	case "":
+		return issues.StateFilter(issues.OpenState), nil
+	case "closed":
+		return issues.StateFilter(issues.ClosedState), nil
+	case "all":
+		return issues.AllStates, nil
+	default:
+		return "", fmt.Errorf("unsupported state filter value: %q", selectedTabName)
+	}
 }
 
 func (s state) Issues() ([]issue, error) {
-	var opt issues.IssueListOptions
-	switch selectedTab := s.req.URL.Query().Get(queryKeyState); selectedTab {
-	case "": // Default. TODO: Make this cleaner.
-		opt.State = issues.StateFilter(issues.OpenState)
-	case string(issues.ClosedState):
-		opt.State = issues.StateFilter(issues.ClosedState)
+	filter, err := s.tabStateFilter()
+	if err != nil {
+		return nil, err
 	}
-	is, err := s.is.List(s.req.Context(), s.RepoSpec, opt)
+	is, err := s.is.List(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: filter})
 	if err != nil {
 		return nil, err
 	}

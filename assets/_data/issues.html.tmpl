@@ -34,7 +34,7 @@
 
 {{define "issues"}}
 <div class="list-entry list-entry-border">
-	{{template "issues-nav" .}}
+	{{render .IssuesNav}}
 	{{with .Issues}}{{range .}}
 	<div class="list-entry-body multilist-entry"{{if .Unread}} style="box-shadow: 2px 0 0 #4183c4 inset;"{{end}}>
 		<div style="display: flex;">
