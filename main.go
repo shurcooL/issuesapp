@@ -355,14 +355,6 @@ func (s state) augmentUnread(dis []issue) []issue {
 	return dis
 }
 
-func (s state) OpenCount() (uint64, error) {
-	return s.is.Count(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
-}
-
-func (s state) ClosedCount() (uint64, error) {
-	return s.is.Count(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
-}
-
 func mustAtoi(s string) int {
 	i, err := strconv.Atoi(s)
 	if err != nil {
