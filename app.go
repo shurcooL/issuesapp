@@ -154,10 +154,11 @@ func (mockUsers) Get(_ context.Context, user users.UserSpec) (users.User, error)
 	switch {
 	case user == users.UserSpec{ID: 1, Domain: "example.org"}:
 		return users.User{
-			UserSpec: user,
-			Login:    "gopher",
-			Name:     "Sample Gopher",
-			Email:    "gopher@example.org",
+			UserSpec:  user,
+			Login:     "gopher",
+			Name:      "Sample Gopher",
+			Email:     "gopher@example.org",
+			AvatarURL: "https://avatars0.githubusercontent.com/u/8566911?v=4&s=32",
 		}, nil
 	default:
 		return users.User{}, fmt.Errorf("user %v not found", user)

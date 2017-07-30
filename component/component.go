@@ -2,6 +2,7 @@
 package component
 
 import (
+	"fmt"
 	"image/color"
 	"time"
 
@@ -13,6 +14,106 @@ import (
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
+
+// Event is an event component.
+type Event struct {
+	Event issues.Event
+}
+
+func (e Event) Render() []*html.Node {
+	// TODO: Make this much nicer.
+	// <div class="list-entry event event-{{.Type}}">
+	// 	{{.Icon}}
+	// 	<div class="event-header">
+	// 		<img class="inline-avatar" width="16" height="16" src="{{.Actor.AvatarURL}}">
+	// 		{{render (user .Actor)}} {{.Text}} {{render (time .CreatedAt)}}
+	// 	</div>
+	// </div>
+
+	div := htmlg.DivClass("event-header")
+	image := &html.Node{
+		Type: html.ElementNode, Data: atom.Img.String(),
+		Attr: []html.Attribute{
+			{Key: atom.Style.String(), Val: "width: 16px; height: 16px; border-radius: 2px; vertical-align: middle; margin-right: 4px;"},
+			{Key: atom.Src.String(), Val: e.Event.Actor.AvatarURL},
+		},
+	}
+	div.AppendChild(image)
+	for _, n := range (User{e.Event.Actor}).Render() {
+		div.AppendChild(n)
+	}
+	div.AppendChild(htmlg.Text(" "))
+	for _, n := range e.text() {
+		div.AppendChild(n)
+	}
+	div.AppendChild(htmlg.Text(" "))
+	for _, n := range (Time{e.Event.CreatedAt}).Render() {
+		div.AppendChild(n)
+	}
+
+	outerDiv := htmlg.DivClass(fmt.Sprintf("list-entry event event-%s", e.Event.Type),
+		e.icon(),
+		div,
+	)
+	return []*html.Node{outerDiv}
+}
+
+func (e Event) icon() *html.Node {
+	var (
+		icon            *html.Node
+		color           = "#767676"
+		backgroundColor = "#f3f3f3"
+	)
+	switch e.Event.Type {
+	case issues.Reopened:
+		icon = octiconssvg.PrimitiveDot()
+		color, backgroundColor = "#fff", "#6cc644"
+	case issues.Closed:
+		icon = octiconssvg.CircleSlash()
+		color, backgroundColor = "#fff", "#bd2c00"
+	case issues.Renamed:
+		icon = octiconssvg.Pencil()
+	case issues.Labeled, issues.Unlabeled:
+		icon = octiconssvg.Tag()
+	case issues.CommentDeleted:
+		icon = octiconssvg.X()
+	default:
+		icon = octiconssvg.PrimitiveDot()
+	}
+	return &html.Node{
+		Type: html.ElementNode, Data: atom.Span.String(),
+		Attr: []html.Attribute{
+			{Key: atom.Class.String(), Val: "event-icon"},
+			{Key: atom.Style.String(), Val: fmt.Sprintf("color: %s; background-color: %s;", color, backgroundColor)},
+		},
+		FirstChild: icon,
+	}
+}
+
+func (e Event) text() []*html.Node {
+	switch e.Event.Type {
+	case issues.Reopened, issues.Closed:
+		return []*html.Node{htmlg.Text(fmt.Sprintf("%s this", e.Event.Type))}
+	case issues.Renamed:
+		return []*html.Node{htmlg.Text("changed the title from "), htmlg.Strong(e.Event.Rename.From), htmlg.Text(" to "), htmlg.Strong(e.Event.Rename.To)}
+	case issues.Labeled:
+		var ns []*html.Node
+		ns = append(ns, htmlg.Text("added the "))
+		ns = append(ns, Label{Label: *e.Event.Label}.Render()...)
+		ns = append(ns, htmlg.Text(" label"))
+		return ns
+	case issues.Unlabeled:
+		var ns []*html.Node
+		ns = append(ns, htmlg.Text("removed the "))
+		ns = append(ns, Label{Label: *e.Event.Label}.Render()...)
+		ns = append(ns, htmlg.Text(" label"))
+		return ns
+	case issues.CommentDeleted:
+		return []*html.Node{htmlg.Text("deleted a comment")}
+	default:
+		return []*html.Node{htmlg.Text(string(e.Event.Type))}
+	}
+}
 
 // IssueStateBadge is a component that displays the state of an issue
 // with a badge, who opened it, and when it was opened.

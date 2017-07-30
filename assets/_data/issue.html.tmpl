@@ -24,6 +24,6 @@
 	{{if eq .TemplateName "comment"}}
 		{{template "comment" .IssueItem}}
 	{{else if eq .TemplateName "event"}}
-		{{template "event" .IssueItem}}
+		{{render (event .IssueItem)}}
 	{{end}}
 {{end}}

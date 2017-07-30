@@ -1,9 +1,0 @@
-{{define "event"}}
-<div class="list-entry event event-{{.Type}}">
-	{{.Icon}}
-	<div class="event-header">
-		<img class="inline-avatar" width="16" height="16" src="{{.Actor.AvatarURL}}">
-		{{render (user .Actor)}} {{.Text}} {{render (time .CreatedAt)}}
-	</div>
-</div>
-{{end}}

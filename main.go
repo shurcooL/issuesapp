@@ -190,6 +190,7 @@ func loadTemplates(state common.State, bodyPre string) (*template.Template, erro
 		"render": func(c htmlg.Component) template.HTML {
 			return template.HTML(htmlg.Render(c.Render()...))
 		},
+		"event":           func(e issues.Event) htmlg.Component { return component.Event{Event: e} },
 		"issueStateBadge": func(i issues.Issue) htmlg.Component { return component.IssueStateBadge{Issue: i} },
 		"issueIcon":       func(s issues.State) htmlg.Component { return component.IssueIcon{State: s} },
 		"label":           func(l issues.Label) htmlg.Component { return component.Label{Label: l} },
@@ -332,9 +333,9 @@ func (h *handler) PostEditIssueHandler(w http.ResponseWriter, req *http.Request)
 		}
 		resp.Set("issue-toggle-button", buf.String())
 
-		for _, e := range events {
+		for _, event := range events {
 			buf.Reset()
-			err = h.static.ExecuteTemplate(&buf, "event", event{e})
+			err = htmlg.RenderComponents(&buf, component.Event{Event: event})
 			if err != nil {
 				return err
 			}
@@ -578,8 +579,8 @@ func (s state) Items() ([]issueItem, error) {
 	for _, comment := range cs {
 		items = append(items, issueItem{comment})
 	}
-	for _, e := range es {
-		items = append(items, issueItem{event{e}})
+	for _, event := range es {
+		items = append(items, issueItem{event})
 	}
 	sort.Sort(byCreatedAtID(items))
 	return items, nil
