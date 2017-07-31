@@ -36,21 +36,26 @@
 <div class="list-entry list-entry-border">
 	{{render .IssuesNav}}
 	{{with .Issues}}{{range .}}
-	<div class="list-entry-body multilist-entry"{{if .Unread}} style="box-shadow: 2px 0 0 #4183c4 inset;"{{end}}>
-		<div style="display: flex;">
-			{{render (issueIcon .State)}}
-			<div style="flex-grow: 1;">
-				<div>
-					<a class="black" href="{{$.BaseURI}}/{{.ID}}"><strong>{{.Title}}</strong></a>
-					{{range .Labels}}{{render (label .)}}{{end}}
-				</div>
-				<div class="gray tiny">#{{.ID}} opened {{render (time .CreatedAt)}} by {{.User.Login}}</div>
-			</div>
-			<span title="{{.Replies}} replies" class="tiny {{if .Replies}}gray{{else}}lightgray{{end}}">{{octicon "comment"}} {{.Replies}}</span>
-		</div>
-	</div>
+		{{template "issue-entry" .}}
 	{{end}}{{else}}
 		<div style="text-align: center; margin-top: 80px; margin-bottom: 80px;">There aren't any {{.Tab}} issues.</div>
 	{{end}}
+</div>
+{{end}}
+
+{{/* Dot is issue in display.go. */}}
+{{define "issue-entry"}}
+<div class="list-entry-body multilist-entry"{{if .Unread}} style="box-shadow: 2px 0 0 #4183c4 inset;"{{end}}>
+	<div style="display: flex;">
+		{{render (issueIcon .State)}}
+		<div style="flex-grow: 1;">
+			<div>
+				<a class="black" href="{{state.BaseURI}}/{{.ID}}"><strong>{{.Title}}</strong></a>
+				{{range .Labels}}{{render (label .)}}{{end}}
+			</div>
+			<div class="gray tiny">#{{.ID}} opened {{render (time .CreatedAt)}} by {{.User.Login}}</div>
+		</div>
+		<span title="{{.Replies}} replies" class="tiny {{if .Replies}}gray{{else}}lightgray{{end}}">{{octicon "comment"}} {{.Replies}}</span>
+	</div>
 </div>
 {{end}}
