@@ -192,8 +192,6 @@ func loadTemplates(state common.State, bodyPre string) (*template.Template, erro
 		},
 		"event":           func(e issues.Event) htmlg.Component { return component.Event{Event: e} },
 		"issueStateBadge": func(i issues.Issue) htmlg.Component { return component.IssueStateBadge{Issue: i} },
-		"issueIcon":       func(s issues.State) htmlg.Component { return component.IssueIcon{State: s} },
-		"label":           func(l issues.Label) htmlg.Component { return component.Label{Label: l} },
 		"time":            func(t time.Time) htmlg.Component { return component.Time{Time: t} },
 		"user":            func(u users.User) htmlg.Component { return component.User{User: u} },
 	})
@@ -532,7 +530,7 @@ func (s state) tabStateFilter() (issues.StateFilter, error) {
 	}
 }
 
-func (s state) Issues() ([]issue, error) {
+func (s state) Issues() ([]component.IssueEntry, error) {
 	filter, err := s.tabStateFilter()
 	if err != nil {
 		return nil, err
@@ -541,17 +539,17 @@ func (s state) Issues() ([]issue, error) {
 	if err != nil {
 		return nil, err
 	}
-	var dis []issue
+	var es []component.IssueEntry
 	for _, i := range is {
-		dis = append(dis, issue{Issue: i})
+		es = append(es, component.IssueEntry{Issue: i, BaseURI: s.BaseURI})
 	}
-	dis = s.augmentUnread(dis)
-	return dis, nil
+	es = s.augmentUnread(es)
+	return es, nil
 }
 
-func (s state) augmentUnread(dis []issue) []issue {
+func (s state) augmentUnread(es []component.IssueEntry) []component.IssueEntry {
 	if s.notifications == nil {
-		return dis
+		return es
 	}
 
 	tt, ok := s.is.(interface {
@@ -559,13 +557,13 @@ func (s state) augmentUnread(dis []issue) []issue {
 	})
 	if !ok {
 		log.Println("augmentUnread: issues service doesn't implement ThreadType")
-		return dis
+		return es
 	}
 	threadType := tt.ThreadType()
 
 	if s.CurrentUser.ID == 0 {
 		// Unauthenticated user cannot have any unread issues.
-		return dis
+		return es
 	}
 
 	// TODO: Consider starting to do this in background in parallel with s.is.List.
@@ -574,7 +572,7 @@ func (s state) augmentUnread(dis []issue) []issue {
 	})
 	if err != nil {
 		log.Println("augmentUnread: failed to s.notifications.List:", err)
-		return dis
+		return es
 	}
 
 	unreadThreads := make(map[uint64]struct{}) // Set of unread thread IDs.
@@ -585,11 +583,11 @@ func (s state) augmentUnread(dis []issue) []issue {
 		unreadThreads[n.ThreadID] = struct{}{}
 	}
 
-	for i, di := range dis {
-		_, unread := unreadThreads[di.ID]
-		dis[i].Unread = unread
+	for i, e := range es {
+		_, unread := unreadThreads[e.Issue.ID]
+		es[i].Unread = unread
 	}
-	return dis
+	return es
 }
 
 func (s state) Issue() (issues.Issue, error) {

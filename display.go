@@ -7,13 +7,6 @@ import (
 	"github.com/shurcooL/issues"
 )
 
-// issue is an issues.Issue wrapper with display augmentations.
-type issue struct {
-	issues.Issue
-
-	Unread bool // Unread indicates whether the issue contains unread notifications for authenticated user.
-}
-
 // issueItem represents an issue item for display purposes.
 type issueItem struct {
 	// IssueItem can be one of issues.Comment, issues.Event.

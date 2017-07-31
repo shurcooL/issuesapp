@@ -54,11 +54,14 @@ func run() error {
 
 	// Create a test issue with some reactions.
 	_, err = service.Create(context.Background(), repo, issues.Issue{
-		Title: "Title",
+		Title: "Some issue about something",
 		Comment: issues.Comment{
 			Body: "This is a test issue.",
 		},
-		Labels: []issues.Label{{Name: "label", Color: issues.RGB{R: 224, G: 235, B: 245}}},
+		Labels: []issues.Label{
+			{Name: "label", Color: issues.RGB{R: 224, G: 235, B: 245}},
+			{Name: "another", Color: issues.RGB{R: 224, G: 235, B: 245}},
+		},
 	})
 	if err != nil {
 		return err

@@ -39,17 +39,13 @@ func (e Event) Render() []*html.Node {
 		},
 	}
 	div.AppendChild(image)
-	for _, n := range (User{e.Event.Actor}).Render() {
-		div.AppendChild(n)
-	}
+	htmlg.AppendChildren(div, User{e.Event.Actor}.Render()...)
 	div.AppendChild(htmlg.Text(" "))
 	for _, n := range e.text() {
 		div.AppendChild(n)
 	}
 	div.AppendChild(htmlg.Text(" "))
-	for _, n := range (Time{e.Event.CreatedAt}).Render() {
-		div.AppendChild(n)
-	}
+	htmlg.AppendChildren(div, Time{e.Event.CreatedAt}.Render()...)
 
 	outerDiv := htmlg.DivClass(fmt.Sprintf("list-entry event event-%s", e.Event.Type),
 		e.icon(),
@@ -133,13 +129,9 @@ func (i IssueStateBadge) Render() []*html.Node {
 			{Key: atom.Style.String(), Val: "margin-left: 4px;"},
 		},
 	}
-	for _, n := range (User{i.Issue.User}).Render() {
-		span.AppendChild(n)
-	}
+	htmlg.AppendChildren(span, User{i.Issue.User}.Render()...)
 	span.AppendChild(htmlg.Text(" opened this issue "))
-	for _, n := range (Time{i.Issue.CreatedAt}).Render() {
-		span.AppendChild(n)
-	}
+	htmlg.AppendChildren(span, Time{i.Issue.CreatedAt}.Render()...)
 	ns = append(ns, span)
 	return ns
 }
