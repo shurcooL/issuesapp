@@ -6,7 +6,7 @@
 		{{template "body-pre" .}}
 		{{.BodyTop}}
 		{{template "create-issue" .}}
-		{{template "issues" .}}
+		{{render .Issues}}
 	</body>
 </html>
 
@@ -30,15 +30,4 @@
 	{{if .CurrentUser.ID}}
 		<div style="text-align: right;"><button class="btn btn-success btn-small" onclick="window.location = '{{.BaseURI}}/new';">Create Issue</button></div>
 	{{end}}
-{{end}}
-
-{{define "issues"}}
-<div class="list-entry list-entry-border">
-	{{render .IssuesNav}}
-	{{with .Issues}}{{range .}}
-		{{render .}}
-	{{end}}{{else}}
-		<div style="text-align: center; margin-top: 80px; margin-bottom: 80px;">There aren't any {{.Tab}} issues.</div>
-	{{end}}
-</div>
 {{end}}

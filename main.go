@@ -209,6 +209,11 @@ func (h *handler) IssuesHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	_, err = stateFilter(req.URL.Query())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err = h.static.ExecuteTemplate(w, "issues.html.tmpl", &state)
 	if err != nil {
@@ -489,35 +494,42 @@ type state struct {
 	common.State
 }
 
+// Issues fetches a list of issues, and returns a component
+// that displays them on the page.
+func (s state) Issues() (component.Issues, error) {
+	filter, err := stateFilter(s.req.URL.Query())
+	if err != nil {
+		return component.Issues{}, err
+	}
+	issuesNav, err := s.issuesNav()
+	if err != nil {
+		return component.Issues{}, err
+	}
+	is, err := s.is.List(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: filter})
+	if err != nil {
+		return component.Issues{}, err
+	}
+	var es []component.IssueEntry
+	for _, i := range is {
+		es = append(es, component.IssueEntry{Issue: i, BaseURI: s.BaseURI})
+	}
+	es = s.augmentUnread(es)
+	return component.Issues{
+		IssuesNav: issuesNav,
+		Filter:    filter,
+		Entries:   es,
+	}, nil
+}
+
 const (
 	// stateQueryKey is name of query key for controlling issue state filter.
 	stateQueryKey = "state"
 )
 
-func (s state) IssuesNav() (htmlg.Component, error) {
-	openCount, err := s.is.Count(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
-	if err != nil {
-		return nil, err
-	}
-	closedCount, err := s.is.Count(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
-	if err != nil {
-		return nil, err
-	}
-	return component.IssuesNav{
-		OpenCount:     openCount,
-		ClosedCount:   closedCount,
-		Path:          s.BaseURI + s.ReqPath,
-		Query:         s.req.URL.Query(),
-		StateQueryKey: stateQueryKey,
-	}, nil
-}
-
-func (s state) Tab() (issues.StateFilter, error) {
-	return s.tabStateFilter()
-}
-
-func (s state) tabStateFilter() (issues.StateFilter, error) {
-	selectedTabName := s.req.URL.Query().Get(stateQueryKey)
+// stateFilter parses the issue state filter from query,
+// returning an error if the value is unsupported.
+func stateFilter(query url.Values) (issues.StateFilter, error) {
+	selectedTabName := query.Get(stateQueryKey)
 	switch selectedTabName {
 	case "":
 		return issues.StateFilter(issues.OpenState), nil
@@ -530,21 +542,22 @@ func (s state) tabStateFilter() (issues.StateFilter, error) {
 	}
 }
 
-func (s state) Issues() ([]component.IssueEntry, error) {
-	filter, err := s.tabStateFilter()
+func (s state) issuesNav() (component.IssuesNav, error) {
+	openCount, err := s.is.Count(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
 	if err != nil {
-		return nil, err
+		return component.IssuesNav{}, err
 	}
-	is, err := s.is.List(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: filter})
+	closedCount, err := s.is.Count(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
 	if err != nil {
-		return nil, err
+		return component.IssuesNav{}, err
 	}
-	var es []component.IssueEntry
-	for _, i := range is {
-		es = append(es, component.IssueEntry{Issue: i, BaseURI: s.BaseURI})
-	}
-	es = s.augmentUnread(es)
-	return es, nil
+	return component.IssuesNav{
+		OpenCount:     openCount,
+		ClosedCount:   closedCount,
+		Path:          s.BaseURI + s.ReqPath,
+		Query:         s.req.URL.Query(),
+		StateQueryKey: stateQueryKey,
+	}, nil
 }
 
 func (s state) augmentUnread(es []component.IssueEntry) []component.IssueEntry {

@@ -10,6 +10,49 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
+// Issues is a component that displays a page of issues,
+// with a navigation bar on top.
+type Issues struct {
+	IssuesNav IssuesNav
+	Filter    issues.StateFilter
+	Entries   []IssueEntry
+}
+
+func (i Issues) Render() []*html.Node {
+	// TODO: Make this much nicer.
+	// <div class="list-entry list-entry-border">
+	// 	{{render .IssuesNav}}
+	// 	{{with .Issues}}{{range .}}
+	// 		{{render .}}
+	// 	{{end}}{{else}}
+	// 		<div style="text-align: center; margin-top: 80px; margin-bottom: 80px;">There aren't any {{.Filter}} issues.</div>
+	// 	{{end}}
+	// </div>
+
+	var ns []*html.Node
+	ns = append(ns, i.IssuesNav.Render()...)
+	for _, e := range i.Entries {
+		ns = append(ns, e.Render()...)
+	}
+	if len(i.Entries) == 0 {
+		// No issues with this filter. Let the user know via a blank slate.
+		div := &html.Node{
+			Type: html.ElementNode, Data: atom.Div.String(),
+			Attr: []html.Attribute{{Key: atom.Style.String(), Val: "text-align: center; margin-top: 80px; margin-bottom: 80px;"}},
+		}
+		switch i.Filter {
+		default:
+			div.AppendChild(htmlg.Text(fmt.Sprintf("There aren't any %s issues.", i.Filter)))
+		case issues.AllStates:
+			div.AppendChild(htmlg.Text("There aren't any issues."))
+		}
+		ns = append(ns, div)
+	}
+
+	div := htmlg.DivClass("list-entry list-entry-border", ns...)
+	return []*html.Node{div}
+}
+
 // IssueEntry is an entry within the list of issues.
 type IssueEntry struct {
 	Issue  issues.Issue
