@@ -26,9 +26,7 @@ func (n IssuesNav) Render() []*html.Node {
 	// 	<nav>{{.Tabs}}</nav>
 	// </div>
 	nav := &html.Node{Type: html.ElementNode, Data: atom.Nav.String()}
-	for _, n := range n.tabs() {
-		nav.AppendChild(n)
-	}
+	htmlg.AppendChildren(nav, n.tabs()...)
 	div := htmlg.DivClass("list-entry-header", nav)
 	return []*html.Node{div}
 }
@@ -58,9 +56,7 @@ func (n IssuesNav) tabs() []*html.Node {
 				{Key: atom.Href.String(), Val: u.String()},
 			}
 		}
-		for _, n := range tab.Component.Render() {
-			a.AppendChild(n)
-		}
+		htmlg.AppendChildren(a, tab.Component.Render()...)
 		ns = append(ns, a)
 	}
 	return ns

@@ -41,9 +41,7 @@ func (e Event) Render() []*html.Node {
 	div.AppendChild(image)
 	htmlg.AppendChildren(div, User{e.Event.Actor}.Render()...)
 	div.AppendChild(htmlg.Text(" "))
-	for _, n := range e.text() {
-		div.AppendChild(n)
-	}
+	htmlg.AppendChildren(div, e.text()...)
 	div.AppendChild(htmlg.Text(" "))
 	htmlg.AppendChildren(div, Time{e.Event.CreatedAt}.Render()...)
 
