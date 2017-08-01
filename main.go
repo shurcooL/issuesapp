@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -225,7 +226,10 @@ func (h *handler) IssuesHandler(w http.ResponseWriter, req *http.Request) {
 
 func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request) {
 	state, err := h.state(req)
-	if err != nil {
+	if os.IsNotExist(err) {
+		http.Error(w, "404 Not Found", http.StatusNotFound)
+		return
+	} else if err != nil {
 		log.Println("state:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
