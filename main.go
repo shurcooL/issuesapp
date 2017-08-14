@@ -100,17 +100,15 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	return handler
 }
 
-type handler struct {
-	http.Handler
+// RepoSpecContextKey is a context key for the request's issues.RepoSpec.
+// That value specifies which repo the issues are to be displayed for.
+// The associated value will be of type issues.RepoSpec.
+var RepoSpecContextKey = &contextKey{"RepoSpec"}
 
-	is issues.Service
-	us users.Service
-
-	// static is loaded once in New, and is only for rendering templates that don't use state.
-	static *template.Template
-
-	Options
-}
+// BaseURIContextKey is a context key for the request's base URI.
+// That value specifies the base URI prefix to use for all absolute URLs.
+// The associated value will be of type string.
+var BaseURIContextKey = &contextKey{"BaseURI"}
 
 // Options for configuring issues app.
 type Options struct {
@@ -124,83 +122,16 @@ type Options struct {
 	BodyTop func(req *http.Request) ([]htmlg.Component, error)
 }
 
-// RepoSpecContextKey is a context key for the request's issues.RepoSpec.
-// That value specifies which repo the issues are to be displayed for.
-// The associated value will be of type issues.RepoSpec.
-var RepoSpecContextKey = &contextKey{"RepoSpec"}
+type handler struct {
+	http.Handler
 
-// BaseURIContextKey is a context key for the request's base URI.
-// That value specifies the base URI prefix to use for all absolute URLs.
-// The associated value will be of type string.
-var BaseURIContextKey = &contextKey{"BaseURI"}
+	is issues.Service
+	us users.Service
 
-// contextKey is a value for use with context.WithValue. It's used as
-// a pointer so it fits in an interface{} without allocation.
-type contextKey struct {
-	name string
-}
+	// static is loaded once in New, and is only for rendering templates that don't use state.
+	static *template.Template
 
-func (k *contextKey) String() string { return "github.com/shurcooL/issuesapp context value " + k.name }
-
-func loadTemplates(state common.State, bodyPre string) (*template.Template, error) {
-	t := template.New("").Funcs(template.FuncMap{
-		"json": func(v interface{}) (string, error) {
-			b, err := json.Marshal(v)
-			return string(b), err
-		},
-		"jsonfmt": func(v interface{}) (string, error) {
-			b, err := json.MarshalIndent(v, "", "\t")
-			return string(b), err
-		},
-		"reltime":          humanize.Time,
-		"gfm":              func(s string) template.HTML { return template.HTML(github_flavored_markdown.Markdown([]byte(s))) },
-		"reactionPosition": func(emojiID reactions.EmojiID) string { return reactions.Position(":" + string(emojiID) + ":") },
-		"equalUsers": func(a, b users.User) bool {
-			return a.UserSpec == b.UserSpec
-		},
-		"reactableID": func(commentID uint64) string {
-			return fmt.Sprintf("%d/%d", state.IssueID, commentID)
-		},
-		"reactionsBar": func(reactions []reactions.Reaction, reactableID string) htmlg.Component {
-			return reactionscomponent.ReactionsBar{
-				Reactions:   reactions,
-				CurrentUser: state.CurrentUser,
-				ID:          reactableID,
-			}
-		},
-		"newReaction": func(reactableID string) htmlg.Component {
-			return reactionscomponent.NewReaction{
-				ReactableID: reactableID,
-			}
-		},
-		"state": func() common.State { return state },
-
-		"octicon": func(name string) (template.HTML, error) {
-			icon := octiconssvg.Icon(name)
-			if icon == nil {
-				return "", fmt.Errorf("%q is not a valid Octicon symbol name", name)
-			}
-			var buf bytes.Buffer
-			err := html.Render(&buf, icon)
-			if err != nil {
-				return "", err
-			}
-			return template.HTML(buf.String()), nil
-		},
-
-		"render": func(c htmlg.Component) template.HTML {
-			return template.HTML(htmlg.Render(c.Render()...))
-		},
-		"event":           func(e issues.Event) htmlg.Component { return component.Event{Event: e} },
-		"issueStateBadge": func(i issues.Issue) htmlg.Component { return component.IssueStateBadge{Issue: i} },
-		"time":            func(t time.Time) htmlg.Component { return component.Time{Time: t} },
-		"user":            func(u users.User) htmlg.Component { return component.User{User: u} },
-	})
-	t, err := vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")
-	if err != nil {
-		return nil, err
-	}
-	return t.New("body-pre").Parse(bodyPre)
+	Options
 }
 
 func (h *handler) IssuesHandler(w http.ResponseWriter, req *http.Request) {
@@ -654,3 +585,72 @@ func (s state) ForceIssuesApp() bool {
 	forceIssuesApp, _ := strconv.ParseBool(s.req.URL.Query().Get("issuesapp"))
 	return forceIssuesApp
 }
+
+func loadTemplates(state common.State, bodyPre string) (*template.Template, error) {
+	t := template.New("").Funcs(template.FuncMap{
+		"json": func(v interface{}) (string, error) {
+			b, err := json.Marshal(v)
+			return string(b), err
+		},
+		"jsonfmt": func(v interface{}) (string, error) {
+			b, err := json.MarshalIndent(v, "", "\t")
+			return string(b), err
+		},
+		"reltime":          humanize.Time,
+		"gfm":              func(s string) template.HTML { return template.HTML(github_flavored_markdown.Markdown([]byte(s))) },
+		"reactionPosition": func(emojiID reactions.EmojiID) string { return reactions.Position(":" + string(emojiID) + ":") },
+		"equalUsers": func(a, b users.User) bool {
+			return a.UserSpec == b.UserSpec
+		},
+		"reactableID": func(commentID uint64) string {
+			return fmt.Sprintf("%d/%d", state.IssueID, commentID)
+		},
+		"reactionsBar": func(reactions []reactions.Reaction, reactableID string) htmlg.Component {
+			return reactionscomponent.ReactionsBar{
+				Reactions:   reactions,
+				CurrentUser: state.CurrentUser,
+				ID:          reactableID,
+			}
+		},
+		"newReaction": func(reactableID string) htmlg.Component {
+			return reactionscomponent.NewReaction{
+				ReactableID: reactableID,
+			}
+		},
+		"state": func() common.State { return state },
+
+		"octicon": func(name string) (template.HTML, error) {
+			icon := octiconssvg.Icon(name)
+			if icon == nil {
+				return "", fmt.Errorf("%q is not a valid Octicon symbol name", name)
+			}
+			var buf bytes.Buffer
+			err := html.Render(&buf, icon)
+			if err != nil {
+				return "", err
+			}
+			return template.HTML(buf.String()), nil
+		},
+
+		"render": func(c htmlg.Component) template.HTML {
+			return template.HTML(htmlg.Render(c.Render()...))
+		},
+		"event":           func(e issues.Event) htmlg.Component { return component.Event{Event: e} },
+		"issueStateBadge": func(i issues.Issue) htmlg.Component { return component.IssueStateBadge{Issue: i} },
+		"time":            func(t time.Time) htmlg.Component { return component.Time{Time: t} },
+		"user":            func(u users.User) htmlg.Component { return component.User{User: u} },
+	})
+	t, err := vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")
+	if err != nil {
+		return nil, err
+	}
+	return t.New("body-pre").Parse(bodyPre)
+}
+
+// contextKey is a value for use with context.WithValue. It's used as
+// a pointer so it fits in an interface{} without allocation.
+type contextKey struct {
+	name string
+}
+
+func (k *contextKey) String() string { return "github.com/shurcooL/issuesapp context value " + k.name }
