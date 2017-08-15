@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/gorilla/mux"
 	"github.com/shurcooL/github_flavored_markdown"
 	"github.com/shurcooL/htmlg"
+	"github.com/shurcooL/httperror"
 	"github.com/shurcooL/httpfs/html/vfstemplate"
 	"github.com/shurcooL/httpgzip"
 	"github.com/shurcooL/issues"
@@ -73,30 +73,14 @@ func New(service issues.Service, usersService users.Service, opt Options) http.H
 	}
 
 	handler := &handler{
-		is:      service,
-		us:      usersService,
-		static:  static,
-		Options: opt,
+		is:               service,
+		us:               usersService,
+		static:           static,
+		assetsFileServer: httpgzip.FileServer(assets.Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed}),
+		gfmFileServer:    httpgzip.FileServer(assets.GFMStyle, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed}),
+		Options:          opt,
 	}
 
-	r := mux.NewRouter()
-	// TODO: Make redirection work.
-	//r.StrictSlash(true) // THINK: Can't use this due to redirect not taking baseURI into account.
-	r.HandleFunc("/", handler.IssuesHandler).Methods("GET")
-	r.HandleFunc("/{id:[0-9]+}", handler.IssueHandler).Methods("GET")
-	r.HandleFunc("/{id:[0-9]+}/edit", handler.PostEditIssueHandler).Methods("POST")
-	r.HandleFunc("/{id:[0-9]+}/comment", handler.PostCommentHandler).Methods("POST")
-	r.HandleFunc("/{id:[0-9]+}/comment/{commentID:[0-9]+}", handler.PostEditCommentHandler).Methods("POST")
-	r.HandleFunc("/new", handler.CreateIssueHandler).Methods("GET")
-	r.HandleFunc("/new", handler.PostCreateIssueHandler).Methods("POST")
-	h := http.NewServeMux()
-	h.Handle("/", r)
-	assetsFileServer := httpgzip.FileServer(assets.Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
-	h.Handle("/assets/", assetsFileServer)
-	gfmFileServer := httpgzip.FileServer(assets.GFMStyle, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed})
-	h.Handle("/assets/gfm/", http.StripPrefix("/assets/gfm", gfmFileServer))
-
-	handler.Handler = h
 	return handler
 }
 
@@ -122,11 +106,14 @@ type Options struct {
 	BodyTop func(req *http.Request) ([]htmlg.Component, error)
 }
 
+// handler handles all requests to issuesapp. It acts like a request multiplexer,
+// choosing from various endpoints and parsing the repository ID from URL.
 type handler struct {
-	http.Handler
-
 	is issues.Service
 	us users.Service
+
+	assetsFileServer http.Handler
+	gfmFileServer    http.Handler
 
 	// static is loaded once in New, and is only for rendering templates that don't use state.
 	static *template.Template
@@ -134,8 +121,72 @@ type handler struct {
 	Options
 }
 
+func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	// Handle "/assets/gfm/...".
+	if strings.HasPrefix(req.URL.Path, "/assets/gfm/") {
+		req = stripPrefix(req, len("/assets/gfm"))
+		h.gfmFileServer.ServeHTTP(w, req)
+		return
+	}
+
+	// Handle (the rest of) "/assets/...".
+	if strings.HasPrefix(req.URL.Path, "/assets/") {
+		h.assetsFileServer.ServeHTTP(w, req)
+		return
+	}
+
+	// Handle "/".
+	if req.URL.Path == "/" {
+		h.IssuesHandler(w, req)
+		return
+	}
+
+	// Handle "/new".
+	if req.URL.Path == "/new" {
+		h.serveNewIssue(w, req)
+		return
+	}
+
+	// Handle "/{issueID}" and "/{issueID}/...".
+	elems := strings.SplitN(req.URL.Path[1:], "/", 4)
+	issueID, err := strconv.ParseUint(elems[0], 10, 64)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("404 Not Found\n\ninvalid issue ID %q: %v", elems[0], err), http.StatusNotFound)
+		return
+	}
+	switch {
+	// "/{issueID}".
+	case len(elems) == 1:
+		h.IssueHandler(w, req, issueID)
+
+	// "/{issueID}/edit".
+	case len(elems) == 2 && elems[1] == "edit":
+		h.PostEditIssueHandler(w, req, issueID)
+
+	// "/{issueID}/comment".
+	case len(elems) == 2 && elems[1] == "comment":
+		h.PostCommentHandler(w, req, issueID)
+
+	// "/{issueID}/comment/{commentID}".
+	case len(elems) == 3 && elems[1] == "comment":
+		commentID, err := strconv.ParseUint(elems[2], 10, 64)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("404 Not Found\n\ninvalid comment ID %q: %v", elems[0], err), http.StatusNotFound)
+			return
+		}
+		h.PostEditCommentHandler(w, req, issueID, commentID)
+
+	default:
+		http.Error(w, "404 Not Found", http.StatusNotFound)
+	}
+}
+
 func (h *handler) IssuesHandler(w http.ResponseWriter, req *http.Request) {
-	state, err := h.state(req)
+	if req.Method != http.MethodGet {
+		httperror.HandleMethod(w, httperror.Method{Allowed: []string{http.MethodGet}})
+		return
+	}
+	state, err := h.state(req, 0)
 	if err != nil {
 		log.Println("state:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -155,8 +206,12 @@ func (h *handler) IssuesHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request) {
-	state, err := h.state(req)
+func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request, issueID uint64) {
+	if req.Method != http.MethodGet {
+		httperror.HandleMethod(w, httperror.Method{Allowed: []string{http.MethodGet}})
+		return
+	}
+	state, err := h.state(req, issueID)
 	if os.IsNotExist(err) {
 		http.Error(w, "404 Not Found", http.StatusNotFound)
 		return
@@ -187,8 +242,19 @@ func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request) {
 	io.Copy(w, &buf)
 }
 
+func (h *handler) serveNewIssue(w http.ResponseWriter, req *http.Request) {
+	switch req.Method {
+	case http.MethodGet:
+		h.CreateIssueHandler(w, req)
+	case http.MethodPost:
+		h.PostCreateIssueHandler(w, req)
+	default:
+		httperror.HandleMethod(w, httperror.Method{Allowed: []string{http.MethodGet, http.MethodPost}})
+	}
+}
+
 func (h *handler) CreateIssueHandler(w http.ResponseWriter, req *http.Request) {
-	state, err := h.state(req)
+	state, err := h.state(req, 0)
 	if err != nil {
 		log.Println("state:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -229,14 +295,17 @@ func (h *handler) PostCreateIssueHandler(w http.ResponseWriter, req *http.Reques
 	fmt.Fprintf(w, "%s/%d", baseURI, issue.ID)
 }
 
-func (h *handler) PostEditIssueHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) PostEditIssueHandler(w http.ResponseWriter, req *http.Request, issueID uint64) {
+	if req.Method != http.MethodPost {
+		httperror.HandleMethod(w, httperror.Method{Allowed: []string{http.MethodPost}})
+		return
+	}
 	if err := req.ParseForm(); err != nil {
 		log.Println("req.ParseForm:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	vars := mux.Vars(req)
 	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
 
 	var ir issues.IssueRequest
@@ -247,7 +316,7 @@ func (h *handler) PostEditIssueHandler(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	issue, events, err := h.is.Edit(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), ir)
+	issue, events, err := h.is.Edit(req.Context(), repoSpec, issueID, ir)
 	if err != nil {
 		log.Println("is.Edit:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -290,7 +359,11 @@ func (h *handler) PostEditIssueHandler(w http.ResponseWriter, req *http.Request)
 	}
 }
 
-func (h *handler) PostCommentHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) PostCommentHandler(w http.ResponseWriter, req *http.Request, issueID uint64) {
+	if req.Method != http.MethodPost {
+		httperror.HandleMethod(w, httperror.Method{Allowed: []string{http.MethodPost}})
+		return
+	}
 	if err := req.ParseForm(); err != nil {
 		log.Println("req.ParseForm:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -306,15 +379,10 @@ func (h *handler) PostCommentHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	vars := mux.Vars(req)
-	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
-
 	comment := issues.Comment{
 		Body: req.PostForm.Get("value"),
 	}
-
-	issueID := uint64(mustAtoi(vars["id"]))
-	comment, err = h.is.CreateComment(req.Context(), repoSpec, issueID, comment)
+	comment, err = h.is.CreateComment(req.Context(), state.RepoSpec, issueID, comment)
 	if err != nil {
 		log.Println("is.CreateComment:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -336,23 +404,26 @@ func (h *handler) PostCommentHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) PostEditCommentHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) PostEditCommentHandler(w http.ResponseWriter, req *http.Request, issueID, commentID uint64) {
+	if req.Method != http.MethodPost {
+		httperror.HandleMethod(w, httperror.Method{Allowed: []string{http.MethodPost}})
+		return
+	}
 	if err := req.ParseForm(); err != nil {
 		log.Println("req.ParseForm:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	vars := mux.Vars(req)
 	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
 
 	body := req.PostForm.Get("value")
 	cr := issues.CommentRequest{
-		ID:   uint64(mustAtoi(vars["commentID"])),
+		ID:   commentID,
 		Body: &body,
 	}
 
-	_, err := h.is.EditComment(req.Context(), repoSpec, uint64(mustAtoi(vars["id"])), cr)
+	_, err := h.is.EditComment(req.Context(), repoSpec, issueID, cr)
 	if err != nil {
 		log.Println("is.EditComment:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -360,16 +431,7 @@ func (h *handler) PostEditCommentHandler(w http.ResponseWriter, req *http.Reques
 	}
 }
 
-func mustAtoi(s string) int {
-	i, err := strconv.Atoi(s)
-	if err != nil {
-		panic(err)
-	}
-	return i
-}
-
-func (h *handler) state(req *http.Request) (state, error) {
-	vars := mux.Vars(req)
+func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
 	repoSpec, ok := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
 	if !ok {
 		return state{}, fmt.Errorf("request to %v doesn't have issuesapp.RepoSpecContextKey context key set", req.URL.Path)
@@ -385,10 +447,6 @@ func (h *handler) state(req *http.Request) (state, error) {
 	reqPath := req.URL.Path
 	if reqPath == "/" {
 		reqPath = "" // This is needed so that absolute URL for root view, i.e., /issues, is "/issues" and not "/issues/" because of "/issues" + "/".
-	}
-	issueID, err := strconv.ParseUint(vars["id"], 10, 64)
-	if err != nil {
-		issueID = 0
 	}
 	b := state{
 		State: common.State{
@@ -440,7 +498,7 @@ type state struct {
 
 	is issues.Service
 
-	notifications notifications.Service
+	notifications notifications.Service // For state.augmentUnread.
 
 	common.State
 }
@@ -654,3 +712,18 @@ type contextKey struct {
 }
 
 func (k *contextKey) String() string { return "github.com/shurcooL/issuesapp context value " + k.name }
+
+// stripPrefix returns request r with prefix of length prefixLen stripped from r.URL.Path.
+// prefixLen must not be longer than len(r.URL.Path), otherwise stripPrefix panics.
+// If r.URL.Path is empty after the prefix is stripped, the path is changed to "/".
+func stripPrefix(r *http.Request, prefixLen int) *http.Request {
+	r2 := new(http.Request)
+	*r2 = *r
+	r2.URL = new(url.URL)
+	*r2.URL = *r.URL
+	r2.URL.Path = r.URL.Path[prefixLen:]
+	if r2.URL.Path == "" {
+		r2.URL.Path = "/"
+	}
+	return r2
+}
