@@ -234,7 +234,7 @@ func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	// Call loadTemplates to set updated reactionsBar, etc., template functions.
+	// Call loadTemplates to set updated reactionsBar, reactableID, etc., template functions.
 	t, err := loadTemplates(state.State, h.Options.BodyPre)
 	if err != nil {
 		log.Println("loadTemplates:", err)
@@ -365,6 +365,15 @@ func (h *handler) PostCommentHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	state, err := h.state(req, issueID)
+	if os.IsNotExist(err) {
+		http.Error(w, "404 Not Found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		log.Println("state:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	vars := mux.Vars(req)
 	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
@@ -374,14 +383,21 @@ func (h *handler) PostCommentHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	issueID := uint64(mustAtoi(vars["id"]))
-	comment, err := h.is.CreateComment(req.Context(), repoSpec, issueID, comment)
+	comment, err = h.is.CreateComment(req.Context(), repoSpec, issueID, comment)
 	if err != nil {
 		log.Println("is.CreateComment:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = h.static.ExecuteTemplate(w, "comment", comment)
+	// Call loadTemplates to set updated reactionsBar, reactableID, etc., template functions.
+	t, err := loadTemplates(state.State, h.Options.BodyPre)
+	if err != nil {
+		log.Println("loadTemplates:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = t.ExecuteTemplate(w, "comment", comment)
 	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
