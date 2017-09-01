@@ -13,7 +13,8 @@ import (
 
 // Assets contains assets for issuesapp.
 var Assets = union.New(map[string]http.FileSystem{
-	"/assets": gopherjs_http.NewFS(http.Dir(importPathToDir("github.com/shurcooL/issuesapp/assets/_data"))),
+	"/script.js": gopherjs_http.Package("github.com/shurcooL/issuesapp/frontend"),
+	"/assets":    http.Dir(importPathToDir("github.com/shurcooL/issuesapp/_data")),
 })
 
 func importPathToDir(importPath string) string {

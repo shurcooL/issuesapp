@@ -34,13 +34,15 @@ go generate github.com/shurcooL/issuesapp/...
 Directories
 -----------
 
-| Path                                                                       | Synopsis                                                             |
-|----------------------------------------------------------------------------|----------------------------------------------------------------------|
-| [assets](https://godoc.org/github.com/shurcooL/issuesapp/assets)           | Package assets contains assets for issuesapp.                        |
-| [common](https://godoc.org/github.com/shurcooL/issuesapp/common)           | Package common contains common code for backend and frontend.        |
-| [httpclient](https://godoc.org/github.com/shurcooL/issuesapp/httpclient)   | Package httpclient contains issues.Service implementation over HTTP. |
-| [httphandler](https://godoc.org/github.com/shurcooL/issuesapp/httphandler) | Package httphandler contains an API handler for issues.Service.      |
-| [httproute](https://godoc.org/github.com/shurcooL/issuesapp/httproute)     | Package httproute contains route paths for httpclient, httphandler.  |
+| Path                                                                       | Synopsis                                                                             |
+|----------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| [assets](https://godoc.org/github.com/shurcooL/issuesapp/assets)           | Package assets contains assets for issuesapp.                                        |
+| [common](https://godoc.org/github.com/shurcooL/issuesapp/common)           | Package common contains common code for backend and frontend.                        |
+| [component](https://godoc.org/github.com/shurcooL/issuesapp/component)     | Package component contains individual components that can render themselves as HTML. |
+| [frontend](https://godoc.org/github.com/shurcooL/issuesapp/frontend)       | frontend script for issuesapp.                                                       |
+| [httpclient](https://godoc.org/github.com/shurcooL/issuesapp/httpclient)   | Package httpclient contains issues.Service implementation over HTTP.                 |
+| [httphandler](https://godoc.org/github.com/shurcooL/issuesapp/httphandler) | Package httphandler contains an API handler for issues.Service.                      |
+| [httproute](https://godoc.org/github.com/shurcooL/issuesapp/httproute)     | Package httproute contains route paths for httpclient, httphandler.                  |
 
 License
 -------

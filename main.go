@@ -129,6 +129,13 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Handle "/assets/script.js".
+	if req.URL.Path == "/assets/script.js" {
+		req = stripPrefix(req, len("/assets"))
+		h.assetsFileServer.ServeHTTP(w, req)
+		return
+	}
+
 	// Handle (the rest of) "/assets/...".
 	if strings.HasPrefix(req.URL.Path, "/assets/") {
 		h.assetsFileServer.ServeHTTP(w, req)

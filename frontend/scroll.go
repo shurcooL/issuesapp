@@ -1,5 +1,3 @@
-// +build js
-
 package main
 
 import (
@@ -72,7 +70,7 @@ func AnchorScroll(anchor dom.HTMLElement, e dom.Event) {
 	url, err := url.Parse(anchor.(*dom.HTMLAnchorElement).Href)
 	if err != nil {
 		// Should never happen if AnchorScroll is used correctly.
-		panic(fmt.Errorf("AnchorScroll: url.Parse:", err))
+		panic(fmt.Errorf("AnchorScroll: url.Parse: %v", err))
 	}
 	targetID := url.Fragment
 	target := document.GetElementByID(targetID).(dom.HTMLElement)
