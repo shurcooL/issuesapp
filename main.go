@@ -484,6 +484,7 @@ func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
 	b.notifications = h.Options.Notifications
 
 	b.DisableReactions = h.Options.DisableReactions
+	b.DisableUsers = h.us == nil
 
 	if h.us == nil {
 		// No user service provided, so there can never be an authenticated user.
