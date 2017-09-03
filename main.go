@@ -2,6 +2,7 @@ package issuesapp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -199,10 +200,48 @@ func (h *handler) IssuesHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	_, err = stateFilter(req.URL.Query())
+	filter, err := stateFilter(req.URL.Query())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+	is, err := h.is.List(req.Context(), state.RepoSpec, issues.IssueListOptions{State: filter})
+	if os.IsNotExist(err) {
+		log.Println("issues.List:", err)
+		http.Error(w, "404 Not Found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		log.Println("issues.List:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	openCount, err := h.is.Count(req.Context(), state.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
+	if err != nil {
+		log.Println("issues.Count(open):", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	closedCount, err := h.is.Count(req.Context(), state.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
+	if err != nil {
+		log.Println("issues.Count(closed):", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var es []component.IssueEntry
+	for _, i := range is {
+		es = append(es, component.IssueEntry{Issue: i, BaseURI: state.BaseURI})
+	}
+	es = state.augmentUnread(req.Context(), es, h.is, h.Notifications)
+	state.Issues = component.Issues{
+		IssuesNav: component.IssuesNav{
+			OpenCount:     openCount,
+			ClosedCount:   closedCount,
+			Path:          state.BaseURI + state.ReqPath,
+			Query:         req.URL.Query(),
+			StateQueryKey: stateQueryKey,
+		},
+		Filter:  filter,
+		Entries: es,
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err = h.static.ExecuteTemplate(w, "issues.html.tmpl", &state)
@@ -211,6 +250,70 @@ func (h *handler) IssuesHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+const (
+	// stateQueryKey is name of query key for controlling issue state filter.
+	stateQueryKey = "state"
+)
+
+// stateFilter parses the issue state filter from query,
+// returning an error if the value is unsupported.
+func stateFilter(query url.Values) (issues.StateFilter, error) {
+	selectedTabName := query.Get(stateQueryKey)
+	switch selectedTabName {
+	case "":
+		return issues.StateFilter(issues.OpenState), nil
+	case "closed":
+		return issues.StateFilter(issues.ClosedState), nil
+	case "all":
+		return issues.AllStates, nil
+	default:
+		return "", fmt.Errorf("unsupported state filter value: %q", selectedTabName)
+	}
+}
+
+func (s state) augmentUnread(ctx context.Context, es []component.IssueEntry, is issues.Service, notificationsService notifications.Service) []component.IssueEntry {
+	if notificationsService == nil {
+		return es
+	}
+
+	tt, ok := is.(interface {
+		ThreadType() string
+	})
+	if !ok {
+		log.Println("augmentUnread: issues service doesn't implement ThreadType")
+		return es
+	}
+	threadType := tt.ThreadType()
+
+	if s.CurrentUser.ID == 0 {
+		// Unauthenticated user cannot have any unread issues.
+		return es
+	}
+
+	// TODO: Consider starting to do this in background in parallel with is.List.
+	ns, err := notificationsService.List(ctx, notifications.ListOptions{
+		Repo: &notifications.RepoSpec{URI: s.RepoSpec.URI},
+	})
+	if err != nil {
+		log.Println("augmentUnread: failed to notifications.List:", err)
+		return es
+	}
+
+	unreadThreads := make(map[uint64]struct{}) // Set of unread thread IDs.
+	for _, n := range ns {
+		if n.AppID != threadType { // Assumes RepoSpec matches because we filtered via notifications.ListOptions.
+			continue
+		}
+		unreadThreads[n.ThreadID] = struct{}{}
+	}
+
+	for i, e := range es {
+		_, unread := unreadThreads[e.Issue.ID]
+		es[i].Unread = unread
+	}
+	return es
 }
 
 func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request, issueID uint64) {
@@ -504,10 +607,6 @@ func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
 		b.BodyTop = template.HTML(buf.String())
 	}
 
-	b.is = h.is
-
-	b.notifications = h.Options.Notifications
-
 	b.DisableReactions = h.Options.DisableReactions
 	b.DisableUsers = h.us == nil
 
@@ -529,123 +628,11 @@ type state struct {
 	HeadPre, HeadPost template.HTML
 	BodyTop           template.HTML
 
-	is issues.Service
-
-	notifications notifications.Service // For state.augmentUnread.
-
 	common.State
 
-	Issue issues.Issue
-	Items []issueItem
-}
-
-// Issues fetches a list of issues, and returns a component
-// that displays them on the page.
-func (s state) Issues() (component.Issues, error) {
-	filter, err := stateFilter(s.req.URL.Query())
-	if err != nil {
-		return component.Issues{}, err
-	}
-	issuesNav, err := s.issuesNav()
-	if err != nil {
-		return component.Issues{}, err
-	}
-	is, err := s.is.List(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: filter})
-	if err != nil {
-		return component.Issues{}, err
-	}
-	var es []component.IssueEntry
-	for _, i := range is {
-		es = append(es, component.IssueEntry{Issue: i, BaseURI: s.BaseURI})
-	}
-	es = s.augmentUnread(es)
-	return component.Issues{
-		IssuesNav: issuesNav,
-		Filter:    filter,
-		Entries:   es,
-	}, nil
-}
-
-const (
-	// stateQueryKey is name of query key for controlling issue state filter.
-	stateQueryKey = "state"
-)
-
-// stateFilter parses the issue state filter from query,
-// returning an error if the value is unsupported.
-func stateFilter(query url.Values) (issues.StateFilter, error) {
-	selectedTabName := query.Get(stateQueryKey)
-	switch selectedTabName {
-	case "":
-		return issues.StateFilter(issues.OpenState), nil
-	case "closed":
-		return issues.StateFilter(issues.ClosedState), nil
-	case "all":
-		return issues.AllStates, nil
-	default:
-		return "", fmt.Errorf("unsupported state filter value: %q", selectedTabName)
-	}
-}
-
-func (s state) issuesNav() (component.IssuesNav, error) {
-	openCount, err := s.is.Count(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
-	if err != nil {
-		return component.IssuesNav{}, err
-	}
-	closedCount, err := s.is.Count(s.req.Context(), s.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
-	if err != nil {
-		return component.IssuesNav{}, err
-	}
-	return component.IssuesNav{
-		OpenCount:     openCount,
-		ClosedCount:   closedCount,
-		Path:          s.BaseURI + s.ReqPath,
-		Query:         s.req.URL.Query(),
-		StateQueryKey: stateQueryKey,
-	}, nil
-}
-
-func (s state) augmentUnread(es []component.IssueEntry) []component.IssueEntry {
-	if s.notifications == nil {
-		return es
-	}
-
-	tt, ok := s.is.(interface {
-		ThreadType() string
-	})
-	if !ok {
-		log.Println("augmentUnread: issues service doesn't implement ThreadType")
-		return es
-	}
-	threadType := tt.ThreadType()
-
-	if s.CurrentUser.ID == 0 {
-		// Unauthenticated user cannot have any unread issues.
-		return es
-	}
-
-	// TODO: Consider starting to do this in background in parallel with s.is.List.
-	ns, err := s.notifications.List(s.req.Context(), notifications.ListOptions{
-		Repo: &notifications.RepoSpec{URI: s.RepoSpec.URI},
-	})
-	if err != nil {
-		log.Println("augmentUnread: failed to s.notifications.List:", err)
-		return es
-	}
-
-	unreadThreads := make(map[uint64]struct{}) // Set of unread thread IDs.
-	for _, n := range ns {
-		if n.AppID != threadType { // Assumes RepoSpec matches because we filtered via notifications.ListOptions.
-			continue
-		}
-		unreadThreads[n.ThreadID] = struct{}{}
-	}
-
-	for i, e := range es {
-		_, unread := unreadThreads[e.Issue.ID]
-		es[i].Unread = unread
-	}
-	return es
+	Issues component.Issues
+	Issue  issues.Issue
+	Items  []issueItem
 }
 
 // ForceIssuesApp reports whether "issuesapp" query is true.
