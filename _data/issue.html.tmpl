@@ -10,9 +10,8 @@
 </html>
 
 {{define "issue"}}
-	{{$issue := .Issue}}
-	<h1>{{$issue.Title}} <span class="gray">#{{$issue.ID}}</span></h1>
-	<div id="issue-state-badge" style="margin-bottom: 20px;">{{render (issueStateBadge $issue)}}</div>
+	<h1>{{.Issue.Title}} <span class="gray">#{{.Issue.ID}}</span></h1>
+	<div id="issue-state-badge" style="margin-bottom: 20px;">{{render (issueStateBadge .Issue)}}</div>
 	{{range .Items}}
 		{{template "issue-item" .}}
 	{{end}}

@@ -227,6 +227,16 @@ func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request, issueID
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	state.Issue, err = h.is.Get(req.Context(), state.RepoSpec, state.IssueID)
+	if os.IsNotExist(err) {
+		log.Println("issues.Get:", err)
+		http.Error(w, "404 Not Found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		log.Println("issues.Get:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	// Call loadTemplates to set updated reactionsBar, reactableID, etc., template functions.
 	t, err := loadTemplates(state.State, h.Options.BodyPre)
 	if err != nil {
@@ -234,19 +244,13 @@ func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request, issueID
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var buf bytes.Buffer
-	err = t.ExecuteTemplate(&buf, "issue.html.tmpl", &state)
-	if err != nil && (strings.Contains(err.Error(), "no such file or directory") || strings.Contains(err.Error(), "does not exist")) { // TODO: Better error handling.
-		log.Println("t.ExecuteTemplate:", err)
-		http.Error(w, "404 Not Found", http.StatusNotFound)
-		return
-	} else if err != nil {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err = t.ExecuteTemplate(w, "issue.html.tmpl", &state)
+	if err != nil {
 		log.Println("t.ExecuteTemplate:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	io.Copy(w, &buf)
 }
 
 func (h *handler) serveNewIssue(w http.ResponseWriter, req *http.Request) {
@@ -509,6 +513,8 @@ type state struct {
 	notifications notifications.Service // For state.augmentUnread.
 
 	common.State
+
+	Issue issues.Issue
 }
 
 // Issues fetches a list of issues, and returns a component
@@ -618,10 +624,6 @@ func (s state) augmentUnread(es []component.IssueEntry) []component.IssueEntry {
 		es[i].Unread = unread
 	}
 	return es
-}
-
-func (s state) Issue() (issues.Issue, error) {
-	return s.is.Get(s.req.Context(), s.RepoSpec, s.IssueID)
 }
 
 func (s state) Items() ([]issueItem, error) {
