@@ -237,6 +237,27 @@ func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request, issueID
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	cs, err := h.is.ListComments(req.Context(), state.RepoSpec, state.IssueID, nil)
+	if err != nil {
+		log.Println("issues.ListComments:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	es, err := h.is.ListEvents(req.Context(), state.RepoSpec, state.IssueID, nil)
+	if err != nil {
+		log.Println("issues.ListEvents:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var items []issueItem
+	for _, comment := range cs {
+		items = append(items, issueItem{comment})
+	}
+	for _, event := range es {
+		items = append(items, issueItem{event})
+	}
+	sort.Sort(byCreatedAtID(items))
+	state.Items = items
 	// Call loadTemplates to set updated reactionsBar, reactableID, etc., template functions.
 	t, err := loadTemplates(state.State, h.Options.BodyPre)
 	if err != nil {
@@ -515,6 +536,7 @@ type state struct {
 	common.State
 
 	Issue issues.Issue
+	Items []issueItem
 }
 
 // Issues fetches a list of issues, and returns a component
@@ -624,26 +646,6 @@ func (s state) augmentUnread(es []component.IssueEntry) []component.IssueEntry {
 		es[i].Unread = unread
 	}
 	return es
-}
-
-func (s state) Items() ([]issueItem, error) {
-	cs, err := s.is.ListComments(s.req.Context(), s.RepoSpec, s.IssueID, nil)
-	if err != nil {
-		return nil, err
-	}
-	es, err := s.is.ListEvents(s.req.Context(), s.RepoSpec, s.IssueID, nil)
-	if err != nil {
-		return nil, err
-	}
-	var items []issueItem
-	for _, comment := range cs {
-		items = append(items, issueItem{comment})
-	}
-	for _, event := range es {
-		items = append(items, issueItem{event})
-	}
-	sort.Sort(byCreatedAtID(items))
-	return items, nil
 }
 
 // ForceIssuesApp reports whether "issuesapp" query is true.
