@@ -591,7 +591,6 @@ func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
 			IssueID:  issueID,
 		},
 	}
-	b.req = req
 	b.HeadPre = h.HeadPre
 	b.HeadPost = h.HeadPost
 	if h.BodyTop != nil {
@@ -619,12 +618,12 @@ func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
 		return state{}, err
 	}
 
+	b.ForceIssuesApp, _ = strconv.ParseBool(req.URL.Query().Get("issuesapp"))
+
 	return b, nil
 }
 
 type state struct {
-	req *http.Request
-
 	HeadPre, HeadPost template.HTML
 	BodyTop           template.HTML
 
@@ -633,14 +632,11 @@ type state struct {
 	Issues component.Issues
 	Issue  issues.Issue
 	Items  []issueItem
-}
 
-// ForceIssuesApp reports whether "issuesapp" query is true.
-// This is a temporary solution for external users to use when overriding templates.
-// It's going to go away eventually, so its use is discouraged.
-func (s state) ForceIssuesApp() bool {
-	forceIssuesApp, _ := strconv.ParseBool(s.req.URL.Query().Get("issuesapp"))
-	return forceIssuesApp
+	// ForceIssuesApp reports whether "issuesapp" query is true.
+	// This is a temporary solution for external users to use when overriding templates.
+	// It's going to go away eventually, so its use is discouraged.
+	ForceIssuesApp bool
 }
 
 func loadTemplates(state common.State, bodyPre string) (*template.Template, error) {
