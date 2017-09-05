@@ -20,7 +20,8 @@ div.list-entry {
 	margin-top: 12px;
 }
 div.list-entry-container {
-	flex: 1;
+	width: 100%;
+	box-sizing: border-box;
 }
 div.avatar-container {
 	float: left;
