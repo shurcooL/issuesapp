@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -67,22 +68,23 @@ import (
 // 	http.Handle(httproute.ListComments, errorHandler(apiHandler.ListComments))
 // 	http.Handle(httproute.ListEvents, errorHandler(apiHandler.ListEvents))
 // 	http.Handle(httproute.EditComment, errorHandler(apiHandler.EditComment))
-func New(service issues.Service, usersService users.Service, opt Options) http.Handler {
+func New(service issues.Service, users users.Service, opt Options) http.Handler {
 	static, err := loadTemplates(common.State{}, opt.BodyPre)
 	if err != nil {
 		log.Fatalln("loadTemplates failed:", err)
 	}
-
-	handler := &handler{
+	h := handler{
 		is:               service,
-		us:               usersService,
+		us:               users,
 		static:           static,
 		assetsFileServer: httpgzip.FileServer(assets.Assets, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed}),
 		gfmFileServer:    httpgzip.FileServer(assets.GFMStyle, httpgzip.FileServerOptions{ServeError: httpgzip.Detailed}),
 		Options:          opt,
 	}
-
-	return handler
+	return &errorHandler{
+		handler: h.ServeHTTP,
+		users:   users,
+	}
 }
 
 // RepoSpecContextKey is a context key for the request's issues.RepoSpec.
@@ -122,110 +124,92 @@ type handler struct {
 	Options
 }
 
-func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) error {
 	// Handle "/assets/gfm/...".
 	if strings.HasPrefix(req.URL.Path, "/assets/gfm/") {
 		req = stripPrefix(req, len("/assets/gfm"))
 		h.gfmFileServer.ServeHTTP(w, req)
-		return
+		return nil
 	}
 
 	// Handle "/assets/script.js".
 	if req.URL.Path == "/assets/script.js" {
 		req = stripPrefix(req, len("/assets"))
 		h.assetsFileServer.ServeHTTP(w, req)
-		return
+		return nil
 	}
 
 	// Handle (the rest of) "/assets/...".
 	if strings.HasPrefix(req.URL.Path, "/assets/") {
 		h.assetsFileServer.ServeHTTP(w, req)
-		return
+		return nil
 	}
 
 	// Handle "/".
 	if req.URL.Path == "/" {
-		h.IssuesHandler(w, req)
-		return
+		return h.IssuesHandler(w, req)
 	}
 
 	// Handle "/new".
 	if req.URL.Path == "/new" {
-		h.serveNewIssue(w, req)
-		return
+		return h.serveNewIssue(w, req)
 	}
 
 	// Handle "/{issueID}" and "/{issueID}/...".
 	elems := strings.SplitN(req.URL.Path[1:], "/", 4)
 	issueID, err := strconv.ParseUint(elems[0], 10, 64)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("404 Not Found\n\ninvalid issue ID %q: %v", elems[0], err), http.StatusNotFound)
-		return
+		return httperror.HTTP{Code: http.StatusNotFound, Err: fmt.Errorf("invalid issue ID %q: %v", elems[0], err)}
 	}
 	switch {
 	// "/{issueID}".
 	case len(elems) == 1:
-		h.IssueHandler(w, req, issueID)
+		return h.IssueHandler(w, req, issueID)
 
 	// "/{issueID}/edit".
 	case len(elems) == 2 && elems[1] == "edit":
-		h.PostEditIssueHandler(w, req, issueID)
+		return h.PostEditIssueHandler(w, req, issueID)
 
 	// "/{issueID}/comment".
 	case len(elems) == 2 && elems[1] == "comment":
-		h.PostCommentHandler(w, req, issueID)
+		return h.PostCommentHandler(w, req, issueID)
 
 	// "/{issueID}/comment/{commentID}".
 	case len(elems) == 3 && elems[1] == "comment":
 		commentID, err := strconv.ParseUint(elems[2], 10, 64)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("404 Not Found\n\ninvalid comment ID %q: %v", elems[0], err), http.StatusNotFound)
-			return
+			return httperror.HTTP{Code: http.StatusNotFound, Err: fmt.Errorf("invalid comment ID %q: %v", elems[0], err)}
 		}
-		h.PostEditCommentHandler(w, req, issueID, commentID)
+		return h.PostEditCommentHandler(w, req, issueID, commentID)
 
 	default:
-		http.Error(w, "404 Not Found", http.StatusNotFound)
+		return httperror.HTTP{Code: http.StatusNotFound, Err: errors.New("no route")}
 	}
 }
 
-func (h *handler) IssuesHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) IssuesHandler(w http.ResponseWriter, req *http.Request) error {
 	if req.Method != http.MethodGet {
-		httperror.HandleMethod(w, httperror.Method{Allowed: []string{http.MethodGet}})
-		return
+		return httperror.Method{Allowed: []string{http.MethodGet}}
 	}
 	state, err := h.state(req, 0)
 	if err != nil {
-		log.Println("state:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 	filter, err := stateFilter(req.URL.Query())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return httperror.BadRequest{Err: err}
 	}
 	is, err := h.is.List(req.Context(), state.RepoSpec, issues.IssueListOptions{State: filter})
-	if os.IsNotExist(err) {
-		log.Println("issues.List:", err)
-		http.Error(w, "404 Not Found", http.StatusNotFound)
-		return
-	} else if err != nil {
-		log.Println("issues.List:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err != nil {
+		return err
 	}
 	openCount, err := h.is.Count(req.Context(), state.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.OpenState)})
 	if err != nil {
-		log.Println("issues.Count(open):", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("issues.Count(open): %v", err)
 	}
 	closedCount, err := h.is.Count(req.Context(), state.RepoSpec, issues.IssueListOptions{State: issues.StateFilter(issues.ClosedState)})
 	if err != nil {
-		log.Println("issues.Count(closed):", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("issues.Count(closed): %v", err)
 	}
 	var es []component.IssueEntry
 	for _, i := range is {
@@ -246,10 +230,9 @@ func (h *handler) IssuesHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err = h.static.ExecuteTemplate(w, "issues.html.tmpl", &state)
 	if err != nil {
-		log.Println("t.ExecuteTemplate:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("h.static.ExecuteTemplate: %v", err)
 	}
+	return nil
 }
 
 const (
@@ -316,41 +299,25 @@ func (s state) augmentUnread(ctx context.Context, es []component.IssueEntry, is 
 	return es
 }
 
-func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request, issueID uint64) {
+func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request, issueID uint64) error {
 	if req.Method != http.MethodGet {
-		httperror.HandleMethod(w, httperror.Method{Allowed: []string{http.MethodGet}})
-		return
+		return httperror.Method{Allowed: []string{http.MethodGet}}
 	}
 	state, err := h.state(req, issueID)
-	if os.IsNotExist(err) {
-		http.Error(w, "404 Not Found", http.StatusNotFound)
-		return
-	} else if err != nil {
-		log.Println("state:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err != nil {
+		return err
 	}
 	state.Issue, err = h.is.Get(req.Context(), state.RepoSpec, state.IssueID)
-	if os.IsNotExist(err) {
-		log.Println("issues.Get:", err)
-		http.Error(w, "404 Not Found", http.StatusNotFound)
-		return
-	} else if err != nil {
-		log.Println("issues.Get:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err != nil {
+		return err
 	}
 	cs, err := h.is.ListComments(req.Context(), state.RepoSpec, state.IssueID, nil)
 	if err != nil {
-		log.Println("issues.ListComments:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("issues.ListComments: %v", err)
 	}
 	es, err := h.is.ListEvents(req.Context(), state.RepoSpec, state.IssueID, nil)
 	if err != nil {
-		log.Println("issues.ListEvents:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("issues.ListEvents: %v", err)
 	}
 	var items []issueItem
 	for _, comment := range cs {
@@ -364,81 +331,68 @@ func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request, issueID
 	// Call loadTemplates to set updated reactionsBar, reactableID, etc., template functions.
 	t, err := loadTemplates(state.State, h.Options.BodyPre)
 	if err != nil {
-		log.Println("loadTemplates:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("loadTemplates: %v", err)
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err = t.ExecuteTemplate(w, "issue.html.tmpl", &state)
 	if err != nil {
-		log.Println("t.ExecuteTemplate:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("t.ExecuteTemplate: %v", err)
 	}
+	return nil
 }
 
-func (h *handler) serveNewIssue(w http.ResponseWriter, req *http.Request) {
+func (h *handler) serveNewIssue(w http.ResponseWriter, req *http.Request) error {
 	switch req.Method {
 	case http.MethodGet:
-		h.CreateIssueHandler(w, req)
+		return h.CreateIssueHandler(w, req)
 	case http.MethodPost:
-		h.PostCreateIssueHandler(w, req)
+		return h.PostCreateIssueHandler(w, req)
 	default:
-		httperror.HandleMethod(w, httperror.Method{Allowed: []string{http.MethodGet, http.MethodPost}})
+		return httperror.Method{Allowed: []string{http.MethodGet, http.MethodPost}}
 	}
 }
 
-func (h *handler) CreateIssueHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) CreateIssueHandler(w http.ResponseWriter, req *http.Request) error {
 	state, err := h.state(req, 0)
 	if err != nil {
-		log.Println("state:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 	if state.CurrentUser.ID == 0 {
-		http.Error(w, "this page requires an authenticated user", http.StatusUnauthorized)
-		return
+		return os.ErrPermission
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err = h.static.ExecuteTemplate(w, "new-issue.html.tmpl", &state)
 	if err != nil {
-		log.Println("t.ExecuteTemplate:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("h.static.ExecuteTemplate: %v", err)
 	}
+	return nil
 }
 
-func (h *handler) PostCreateIssueHandler(w http.ResponseWriter, req *http.Request) {
+func (h *handler) PostCreateIssueHandler(w http.ResponseWriter, req *http.Request) error {
 	baseURI := req.Context().Value(BaseURIContextKey).(string)
 	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
 
 	var issue issues.Issue
 	err := json.NewDecoder(req.Body).Decode(&issue)
 	if err != nil {
-		log.Println("json.Decode:", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return httperror.BadRequest{Err: fmt.Errorf("json.Decode: %v", err)}
 	}
 
 	issue, err = h.is.Create(req.Context(), repoSpec, issue)
 	if err != nil {
-		log.Println("is.Create:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	fmt.Fprintf(w, "%s/%d", baseURI, issue.ID)
+	return nil
 }
 
-func (h *handler) PostEditIssueHandler(w http.ResponseWriter, req *http.Request, issueID uint64) {
+func (h *handler) PostEditIssueHandler(w http.ResponseWriter, req *http.Request, issueID uint64) error {
 	if req.Method != http.MethodPost {
-		httperror.HandleMethod(w, httperror.Method{Allowed: []string{http.MethodPost}})
-		return
+		return httperror.Method{Allowed: []string{http.MethodPost}}
 	}
 	if err := req.ParseForm(); err != nil {
-		log.Println("req.ParseForm:", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return httperror.BadRequest{Err: fmt.Errorf("req.ParseForm: %v", err)}
 	}
 
 	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
@@ -446,72 +400,56 @@ func (h *handler) PostEditIssueHandler(w http.ResponseWriter, req *http.Request,
 	var ir issues.IssueRequest
 	err := json.Unmarshal([]byte(req.PostForm.Get("value")), &ir)
 	if err != nil {
-		log.Println("PostEditIssueHandler: json.Unmarshal value:", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return httperror.BadRequest{Err: fmt.Errorf("json.Unmarshal 'value': %v", err)}
 	}
 
 	issue, events, err := h.is.Edit(req.Context(), repoSpec, issueID, ir)
 	if err != nil {
-		log.Println("is.Edit:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = func(w io.Writer, issue issues.Issue) error {
-		var resp = make(url.Values)
-
-		var buf bytes.Buffer
-		err := htmlg.RenderComponents(&buf, component.IssueStateBadge{Issue: issue})
-		if err != nil {
-			return err
-		}
-		resp.Set("issue-state-badge", buf.String())
-
-		buf.Reset()
-		err = h.static.ExecuteTemplate(&buf, "toggle-button", issue.State)
-		if err != nil {
-			return err
-		}
-		resp.Set("issue-toggle-button", buf.String())
-
-		for _, event := range events {
-			buf.Reset()
-			err = htmlg.RenderComponents(&buf, component.Event{Event: event})
-			if err != nil {
-				return err
-			}
-			resp.Add("new-event", buf.String())
-		}
-
-		_, err = io.WriteString(w, resp.Encode())
 		return err
-	}(w, issue)
-	if err != nil {
-		log.Println("t.ExecuteTemplate:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
+
+	resp := make(url.Values)
+
+	// State badge.
+	var buf bytes.Buffer
+	err = htmlg.RenderComponents(&buf, component.IssueStateBadge{Issue: issue})
+	if err != nil {
+		return err
+	}
+	resp.Set("issue-state-badge", buf.String())
+
+	// Toggle button.
+	buf.Reset()
+	err = h.static.ExecuteTemplate(&buf, "toggle-button", issue.State)
+	if err != nil {
+		return err
+	}
+	resp.Set("issue-toggle-button", buf.String())
+
+	// Events.
+	for _, event := range events {
+		buf.Reset()
+		err = htmlg.RenderComponents(&buf, component.Event{Event: event})
+		if err != nil {
+			return err
+		}
+		resp.Add("new-event", buf.String())
+	}
+
+	_, err = io.WriteString(w, resp.Encode())
+	return err
 }
 
-func (h *handler) PostCommentHandler(w http.ResponseWriter, req *http.Request, issueID uint64) {
+func (h *handler) PostCommentHandler(w http.ResponseWriter, req *http.Request, issueID uint64) error {
 	if req.Method != http.MethodPost {
-		httperror.HandleMethod(w, httperror.Method{Allowed: []string{http.MethodPost}})
-		return
+		return httperror.Method{Allowed: []string{http.MethodPost}}
 	}
 	if err := req.ParseForm(); err != nil {
-		log.Println("req.ParseForm:", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return httperror.BadRequest{Err: fmt.Errorf("req.ParseForm: %v", err)}
 	}
 	state, err := h.state(req, issueID)
-	if os.IsNotExist(err) {
-		http.Error(w, "404 Not Found", http.StatusNotFound)
-		return
-	} else if err != nil {
-		log.Println("state:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err != nil {
+		return err
 	}
 
 	comment := issues.Comment{
@@ -519,35 +457,27 @@ func (h *handler) PostCommentHandler(w http.ResponseWriter, req *http.Request, i
 	}
 	comment, err = h.is.CreateComment(req.Context(), state.RepoSpec, issueID, comment)
 	if err != nil {
-		log.Println("is.CreateComment:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	// Call loadTemplates to set updated reactionsBar, reactableID, etc., template functions.
 	t, err := loadTemplates(state.State, h.Options.BodyPre)
 	if err != nil {
-		log.Println("loadTemplates:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("loadTemplates: %v", err)
 	}
 	err = t.ExecuteTemplate(w, "comment", comment)
 	if err != nil {
-		log.Println("t.ExecuteTemplate:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("t.ExecuteTemplate: %v", err)
 	}
+	return nil
 }
 
-func (h *handler) PostEditCommentHandler(w http.ResponseWriter, req *http.Request, issueID, commentID uint64) {
+func (h *handler) PostEditCommentHandler(w http.ResponseWriter, req *http.Request, issueID, commentID uint64) error {
 	if req.Method != http.MethodPost {
-		httperror.HandleMethod(w, httperror.Method{Allowed: []string{http.MethodPost}})
-		return
+		return httperror.Method{Allowed: []string{http.MethodPost}}
 	}
 	if err := req.ParseForm(); err != nil {
-		log.Println("req.ParseForm:", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return httperror.BadRequest{Err: fmt.Errorf("req.ParseForm: %v", err)}
 	}
 
 	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
@@ -557,13 +487,8 @@ func (h *handler) PostEditCommentHandler(w http.ResponseWriter, req *http.Reques
 		ID:   commentID,
 		Body: &body,
 	}
-
 	_, err := h.is.EditComment(req.Context(), repoSpec, issueID, cr)
-	if err != nil {
-		log.Println("is.EditComment:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return err
 }
 
 func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
@@ -601,7 +526,7 @@ func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
 		var buf bytes.Buffer
 		err = htmlg.RenderComponents(&buf, c...)
 		if err != nil {
-			return state{}, err
+			return state{}, fmt.Errorf("htmlg.RenderComponents: %v", err)
 		}
 		b.BodyTop = template.HTML(buf.String())
 	}
@@ -615,7 +540,7 @@ func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
 	} else if user, err := h.us.GetAuthenticated(req.Context()); err == nil {
 		b.CurrentUser = user
 	} else {
-		return state{}, err
+		return state{}, fmt.Errorf("h.us.GetAuthenticated: %v", err)
 	}
 
 	b.ForceIssuesApp, _ = strconv.ParseBool(req.URL.Query().Get("issuesapp"))
