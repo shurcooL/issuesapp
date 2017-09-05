@@ -2,14 +2,17 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"log"
+	"strconv"
 
 	"github.com/shurcooL/github_flavored_markdown"
+	"github.com/shurcooL/issues"
 	"github.com/shurcooL/markdownfmt/markdown"
 	"honnef.co/go/js/dom"
 )
 
-func EditComment(action string, this dom.HTMLElement) {
+func (f *frontend) EditComment(action string, this dom.HTMLElement) {
 	container := getAncestorByClassName(this, "comment-edit-container")
 	// HACK: Currently the child nodes are [text, div, text, div, text], but that isn't reliable.
 	commentView := container.ChildNodes()[1].(dom.HTMLElement)
@@ -43,13 +46,21 @@ func EditComment(action string, this dom.HTMLElement) {
 					// TODO: Display error? Disable "Update comment" button?
 					return
 				}
-				commentID := commentEditor.GetAttribute("data-id")
+				commentID, err := strconv.ParseUint(commentEditor.GetAttribute("data-id"), 10, 64)
+				if err != nil {
+					panic(err)
+				}
 
 				go func() {
-					err := editComment(commentID, string(fmted))
+					body := string(fmted)
+					cr := issues.CommentRequest{
+						ID:   commentID,
+						Body: &body,
+					}
+					_, err := f.is.EditComment(context.Background(), state.RepoSpec, state.IssueID, cr)
 					if err != nil {
-						// TODO: Handle failure properly.
-						log.Println(err)
+						// TODO: Handle failure more visibly in the UI.
+						log.Println("EditComment:", err)
 					}
 				}()
 

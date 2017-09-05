@@ -51,7 +51,7 @@ func TestRoutes(t *testing.T) {
 		{"GET", "/1/edit", http.StatusMethodNotAllowed},
 		{"GET", "/1/comment", http.StatusMethodNotAllowed},
 		{"GET", "/1/foobar", http.StatusNotFound},
-		{"GET", "/1/comment/0", http.StatusMethodNotAllowed},
+		{"POST", "/1/comment/0", http.StatusNotFound},
 		{"GET", "/1/comment/foobar", http.StatusNotFound},
 	}
 	for _, tc := range tests {

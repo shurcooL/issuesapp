@@ -39,28 +39,32 @@ func main() {
 		panic(err)
 	}
 
+	httpClient := httpClient()
+
+	f := &frontend{is: httpclient.NewIssues(httpClient, "", "")}
+
 	js.Global.Set("MarkdownPreview", jsutil.Wrap(MarkdownPreview))
 	js.Global.Set("SwitchWriteTab", jsutil.Wrap(SwitchWriteTab))
 	js.Global.Set("PasteHandler", jsutil.Wrap(PasteHandler))
 	js.Global.Set("CreateNewIssue", CreateNewIssue)
 	js.Global.Set("ToggleIssueState", ToggleIssueState)
 	js.Global.Set("PostComment", PostComment)
-	js.Global.Set("EditComment", jsutil.Wrap(EditComment))
+	js.Global.Set("EditComment", jsutil.Wrap(f.EditComment))
 	js.Global.Set("TabSupportKeyDownHandler", jsutil.Wrap(tabsupport.KeyDownHandler))
 
 	switch readyState := document.ReadyState(); readyState {
 	case "loading":
 		document.AddEventListener("DOMContentLoaded", false, func(dom.Event) {
-			go setup()
+			go setup(f)
 		})
 	case "interactive", "complete":
-		setup()
+		setup(f)
 	default:
 		panic(fmt.Errorf("internal error: unexpected document.ReadyState value: %v", readyState))
 	}
 }
 
-func setup() {
+func setup(f *frontend) {
 	setupIssueToggleButton()
 
 	if createIssueButton, ok := document.GetElementByID("create-issue-button").(dom.HTMLElement); ok {
@@ -75,10 +79,7 @@ func setup() {
 	}
 
 	if !state.DisableReactions {
-		httpClient := httpClient()
-
-		issuesService := httpclient.NewIssues(httpClient, "", "")
-		reactionsService := IssuesReactions{Issues: issuesService}
+		reactionsService := IssuesReactions{Issues: f.is}
 		reactionsmenu.Setup(state.RepoSpec.URI, reactionsService, state.CurrentUser)
 	}
 }
@@ -95,6 +96,10 @@ func httpClient() *http.Client {
 	}
 	// Not authenticated client.
 	return http.DefaultClient
+}
+
+type frontend struct {
+	is issues.Service
 }
 
 func setupIssueToggleButton() {
@@ -277,29 +282,6 @@ func postComment() error {
 		commentEditor.Underlying().Call("dispatchEvent", js.Global.Get("CustomEvent").New("input")) // Trigger "input" event listeners.
 		switchWriteTab(document.GetElementByID("new-comment-container"), commentEditor)
 
-		return nil
-	default:
-		return fmt.Errorf("did not get acceptable status code: %v", resp.Status)
-	}
-}
-
-// editComment edits a comment to the remote API.
-// Comment must be validated before calling this.
-func editComment(id string, content string) error {
-	resp, err := http.PostForm(state.BaseURI+state.ReqPath+"/comment/"+id, url.Values{"value": {content}})
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	_, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("got reply: %v\n", resp.Status)
-
-	switch resp.StatusCode {
-	case http.StatusOK:
 		return nil
 	default:
 		return fmt.Errorf("did not get acceptable status code: %v", resp.Status)

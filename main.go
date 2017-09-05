@@ -59,7 +59,7 @@ import (
 // 		issuesApp.ServeHTTP(w, req)
 // 	})
 //
-// An HTTP API must be available (currently, only EditComment endpoint is used for reacting):
+// An HTTP API must be available (currently, only EditComment endpoint is used):
 //
 // 	// Register HTTP API endpoints.
 // 	apiHandler := httphandler.Issues{Issues: service}
@@ -163,7 +163,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) error {
 	}
 
 	// Handle "/{issueID}" and "/{issueID}/...".
-	elems := strings.SplitN(req.URL.Path[1:], "/", 4)
+	elems := strings.SplitN(req.URL.Path[1:], "/", 3)
 	issueID, err := strconv.ParseUint(elems[0], 10, 64)
 	if err != nil {
 		return httperror.HTTP{Code: http.StatusNotFound, Err: fmt.Errorf("invalid issue ID %q: %v", elems[0], err)}
@@ -180,14 +180,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) error {
 	// "/{issueID}/comment".
 	case len(elems) == 2 && elems[1] == "comment":
 		return h.PostCommentHandler(w, req, issueID)
-
-	// "/{issueID}/comment/{commentID}".
-	case len(elems) == 3 && elems[1] == "comment":
-		commentID, err := strconv.ParseUint(elems[2], 10, 64)
-		if err != nil {
-			return httperror.HTTP{Code: http.StatusNotFound, Err: fmt.Errorf("invalid comment ID %q: %v", elems[0], err)}
-		}
-		return h.PostEditCommentHandler(w, req, issueID, commentID)
 
 	default:
 		return httperror.HTTP{Code: http.StatusNotFound, Err: errors.New("no route")}
@@ -477,25 +469,6 @@ func (h *handler) PostCommentHandler(w http.ResponseWriter, req *http.Request, i
 		return fmt.Errorf("t.ExecuteTemplate: %v", err)
 	}
 	return nil
-}
-
-func (h *handler) PostEditCommentHandler(w http.ResponseWriter, req *http.Request, issueID, commentID uint64) error {
-	if req.Method != http.MethodPost {
-		return httperror.Method{Allowed: []string{http.MethodPost}}
-	}
-	if err := req.ParseForm(); err != nil {
-		return httperror.BadRequest{Err: fmt.Errorf("req.ParseForm: %v", err)}
-	}
-
-	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
-
-	body := req.PostForm.Get("value")
-	cr := issues.CommentRequest{
-		ID:   commentID,
-		Body: &body,
-	}
-	_, err := h.is.EditComment(req.Context(), repoSpec, issueID, cr)
-	return err
 }
 
 func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
