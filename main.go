@@ -125,6 +125,13 @@ type handler struct {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) error {
+	if _, ok := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec); !ok {
+		return fmt.Errorf("request to %v doesn't have issuesapp.RepoSpecContextKey context key set", req.URL.Path)
+	}
+	if _, ok := req.Context().Value(BaseURIContextKey).(string); !ok {
+		return fmt.Errorf("request to %v doesn't have issuesapp.BaseURIContextKey context key set", req.URL.Path)
+	}
+
 	// Handle "/assets/gfm/...".
 	if strings.HasPrefix(req.URL.Path, "/assets/gfm/") {
 		req = stripPrefix(req, len("/assets/gfm"))
@@ -369,8 +376,8 @@ func (h *handler) CreateIssueHandler(w http.ResponseWriter, req *http.Request) e
 }
 
 func (h *handler) PostCreateIssueHandler(w http.ResponseWriter, req *http.Request) error {
-	baseURI := req.Context().Value(BaseURIContextKey).(string)
 	repoSpec := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
+	baseURI := req.Context().Value(BaseURIContextKey).(string)
 
 	var issue issues.Issue
 	err := json.NewDecoder(req.Body).Decode(&issue)
@@ -492,15 +499,6 @@ func (h *handler) PostEditCommentHandler(w http.ResponseWriter, req *http.Reques
 }
 
 func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
-	repoSpec, ok := req.Context().Value(RepoSpecContextKey).(issues.RepoSpec)
-	if !ok {
-		return state{}, fmt.Errorf("request to %v doesn't have issuesapp.RepoSpecContextKey context key set", req.URL.Path)
-	}
-	baseURI, ok := req.Context().Value(BaseURIContextKey).(string)
-	if !ok {
-		return state{}, fmt.Errorf("request to %v doesn't have issuesapp.BaseURIContextKey context key set", req.URL.Path)
-	}
-
 	// TODO: Caller still does a lot of work outside to calculate req.URL.Path by
 	//       subtracting BaseURI from full original req.URL.Path. We should be able
 	//       to compute it here internally by using req.RequestURI and BaseURI.
@@ -510,9 +508,9 @@ func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
 	}
 	b := state{
 		State: common.State{
-			BaseURI:  baseURI,
+			BaseURI:  req.Context().Value(BaseURIContextKey).(string),
 			ReqPath:  reqPath,
-			RepoSpec: repoSpec,
+			RepoSpec: req.Context().Value(RepoSpecContextKey).(issues.RepoSpec),
 			IssueID:  issueID,
 		},
 	}
