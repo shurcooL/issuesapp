@@ -285,7 +285,7 @@ func (s state) augmentUnread(ctx context.Context, es []component.IssueEntry, is 
 
 	unreadThreads := make(map[uint64]struct{}) // Set of unread thread IDs.
 	for _, n := range ns {
-		if n.AppID != threadType { // Assumes RepoSpec matches because we filtered via notifications.ListOptions.
+		if n.ThreadType != threadType { // Assumes RepoSpec matches because we filtered via notifications.ListOptions.
 			continue
 		}
 		unreadThreads[n.ThreadID] = struct{}{}
