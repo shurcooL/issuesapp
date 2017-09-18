@@ -35,7 +35,7 @@ func (n IssuesNav) Render() []*html.Node {
 func (n IssuesNav) tabs() []*html.Node {
 	selectedTabName := n.Query.Get(n.StateQueryKey)
 	var ns []*html.Node
-	for _, tab := range []struct {
+	for i, tab := range []struct {
 		Name      string // Tab name corresponds to its state filter query value.
 		Component htmlg.Component
 	}{
@@ -44,17 +44,21 @@ func (n IssuesNav) tabs() []*html.Node {
 		{Name: "", Component: OpenIssuesTab{Count: n.OpenCount}},
 		{Name: "closed", Component: ClosedIssuesTab{Count: n.ClosedCount}},
 	} {
-		a := &html.Node{Type: html.ElementNode, Data: atom.A.String()}
+		tabURL := (&url.URL{
+			Path:     n.Path,
+			RawQuery: n.rawQuery(tab.Name),
+		}).String()
+		a := &html.Node{
+			Type: html.ElementNode, Data: atom.A.String(),
+			Attr: []html.Attribute{
+				{Key: atom.Href.String(), Val: tabURL},
+			},
+		}
 		if tab.Name == selectedTabName {
-			a.Attr = []html.Attribute{{Key: atom.Class.String(), Val: "selected"}}
-		} else {
-			u := url.URL{
-				Path:     n.Path,
-				RawQuery: n.rawQuery(tab.Name),
-			}
-			a.Attr = []html.Attribute{
-				{Key: atom.Href.String(), Val: u.String()},
-			}
+			a.Attr = append(a.Attr, html.Attribute{Key: atom.Class.String(), Val: "selected"})
+		}
+		if i > 0 {
+			a.Attr = append(a.Attr, html.Attribute{Key: atom.Style.String(), Val: "margin-left: 12px;"})
 		}
 		htmlg.AppendChildren(a, tab.Component.Render()...)
 		ns = append(ns, a)
@@ -80,11 +84,9 @@ type OpenIssuesTab struct {
 
 func (t OpenIssuesTab) Render() []*html.Node {
 	// TODO: Make this much nicer.
-	// <span>
-	// 	<span style="margin-right: 4px;">{{octicon "issue-opened"}}</span>
-	// 	{{.Count}} Open
-	// </span>
-	iconSpan := &html.Node{
+	// <span style="margin-right: 4px;">{{octicon "issue-opened"}}</span>
+	// {{.Count}} Open
+	icon := &html.Node{
 		Type: html.ElementNode, Data: atom.Span.String(),
 		Attr: []html.Attribute{
 			{Key: atom.Style.String(), Val: "margin-right: 4px;"},
@@ -92,8 +94,7 @@ func (t OpenIssuesTab) Render() []*html.Node {
 		FirstChild: octiconssvg.IssueOpened(),
 	}
 	text := htmlg.Text(fmt.Sprintf("%d Open", t.Count))
-	span := htmlg.Span(iconSpan, text)
-	return []*html.Node{span}
+	return []*html.Node{icon, text}
 }
 
 // ClosedIssuesTab is a "Closed Issues Tab" component.
@@ -103,11 +104,9 @@ type ClosedIssuesTab struct {
 
 func (t ClosedIssuesTab) Render() []*html.Node {
 	// TODO: Make this much nicer.
-	// <span style="margin-left: 12px;">
-	// 	<span style="margin-right: 4px;">{{octicon "check"}}</span>
-	// 	{{.Count}} Closed
-	// </span>
-	iconSpan := &html.Node{
+	// <span style="margin-right: 4px;">{{octicon "check"}}</span>
+	// {{.Count}} Closed
+	icon := &html.Node{
 		Type: html.ElementNode, Data: atom.Span.String(),
 		Attr: []html.Attribute{
 			{Key: atom.Style.String(), Val: "margin-right: 4px;"},
@@ -115,9 +114,5 @@ func (t ClosedIssuesTab) Render() []*html.Node {
 		FirstChild: octiconssvg.Check(),
 	}
 	text := htmlg.Text(fmt.Sprintf("%d Closed", t.Count))
-	span := htmlg.Span(iconSpan, text)
-	span.Attr = []html.Attribute{
-		{Key: atom.Style.String(), Val: "margin-left: 12px;"},
-	}
-	return []*html.Node{span}
+	return []*html.Node{icon, text}
 }
