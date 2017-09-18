@@ -158,14 +158,16 @@ textarea.comment-editor:focus {
 	border-radius: 50%;
 }
 
-nav a {
+div.list-entry-header nav a {
 	color: #767676;
-}
-nav a:hover, nav a:active, nav a:focus {
-	color: #000;
 	text-decoration: none;
 }
-nav .selected {
+div.list-entry-header nav a:hover,
+div.list-entry-header nav a:active,
+div.list-entry-header nav a:focus {
+	color: #000;
+}
+div.list-entry-header nav .selected {
 	color: #000;
 	font-weight: bold;
 }
