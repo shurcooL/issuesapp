@@ -54,8 +54,7 @@ func init() {
 				return
 			}
 
-			// TODO: dom.GetWindow().History().ReplaceState(...)
-			js.Global.Get("window").Get("history").Call("replaceState", nil, nil, "#")
+			setFragment("")
 
 			processHashSet()
 
@@ -75,8 +74,7 @@ func AnchorScroll(anchor dom.HTMLElement, e dom.Event) {
 	targetID := url.Fragment
 	target := document.GetElementByID(targetID).(dom.HTMLElement)
 
-	// TODO: dom.GetWindow().History().ReplaceState(...)
-	js.Global.Get("window").Get("history").Call("replaceState", nil, nil, "#"+targetID)
+	setFragment(targetID)
 
 	// TODO: Decide if it's better to do this or not to.
 	centerWindowOn(target)
@@ -117,3 +115,20 @@ func offsetTopRoot(e dom.HTMLElement) float64 {
 	}
 	return offsetTopRoot
 }
+
+// setFragment sets current page URL fragment to hash. The leading '#' shouldn't be included.
+func setFragment(hash string) {
+	url := windowLocation
+	url.Fragment = hash
+	// TODO: dom.GetWindow().History().ReplaceState(...), blocked on https://github.com/dominikh/go-js-dom/issues/41.
+	js.Global.Get("window").Get("history").Call("replaceState", nil, nil, url.String())
+}
+
+var windowLocation = func() url.URL {
+	url, err := url.Parse(dom.GetWindow().Location().Href)
+	if err != nil {
+		// We don't expect this can ever happen, so treat it as an internal error if it does.
+		panic(fmt.Errorf("internal error: parsing window.location.href as URL failed: %v", err))
+	}
+	return *url
+}()
