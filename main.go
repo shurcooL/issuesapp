@@ -113,7 +113,7 @@ type Options struct {
 // choosing from various endpoints and parsing the repository ID from URL.
 type handler struct {
 	is issues.Service
-	us users.Service
+	us users.Service // May be nil if there's no users service.
 
 	assetsFileServer http.Handler
 	gfmFileServer    http.Handler

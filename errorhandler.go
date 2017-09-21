@@ -1,6 +1,8 @@
 package issuesapp
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,7 +15,9 @@ import (
 // errorHandler factors error handling out of the HTTP handler.
 type errorHandler struct {
 	handler func(w http.ResponseWriter, req *http.Request) error
-	users   users.Service
+	users   interface {
+		GetAuthenticated(context.Context) (users.User, error)
+	} // May be nil if there's no users service.
 }
 
 func (h *errorHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -47,7 +51,7 @@ func (h *errorHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err, ok := httperror.IsHTTP(err); ok {
 		code := err.Code
 		error := fmt.Sprintf("%d %s", code, http.StatusText(code))
-		if user, e := h.users.GetAuthenticated(req.Context()); e == nil && user.SiteAdmin {
+		if user, e := h.getAuthenticated(req.Context()); e == nil && user.SiteAdmin {
 			error += "\n\n" + err.Error()
 		}
 		http.Error(w, error, code)
@@ -56,7 +60,7 @@ func (h *errorHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if os.IsNotExist(err) {
 		log.Println(err)
 		error := "404 Not Found"
-		if user, e := h.users.GetAuthenticated(req.Context()); e == nil && user.SiteAdmin {
+		if user, e := h.getAuthenticated(req.Context()); e == nil && user.SiteAdmin {
 			error += "\n\n" + err.Error()
 		}
 		http.Error(w, error, http.StatusNotFound)
@@ -65,7 +69,7 @@ func (h *errorHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if os.IsPermission(err) {
 		log.Println(err)
 		error := "403 Forbidden"
-		if user, e := h.users.GetAuthenticated(req.Context()); e == nil && user.SiteAdmin {
+		if user, e := h.getAuthenticated(req.Context()); e == nil && user.SiteAdmin {
 			error += "\n\n" + err.Error()
 		}
 		http.Error(w, error, http.StatusForbidden)
@@ -74,10 +78,17 @@ func (h *errorHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	log.Println(err)
 	error := "500 Internal Server Error"
-	if user, e := h.users.GetAuthenticated(req.Context()); e == nil && user.SiteAdmin {
+	if user, e := h.getAuthenticated(req.Context()); e == nil && user.SiteAdmin {
 		error += "\n\n" + err.Error()
 	}
 	http.Error(w, error, http.StatusInternalServerError)
+}
+
+func (h *errorHandler) getAuthenticated(ctx context.Context) (users.User, error) {
+	if h.users == nil {
+		return users.User{}, errors.New("no users service")
+	}
+	return h.users.GetAuthenticated(ctx)
 }
 
 // responseWriter wraps a real http.ResponseWriter and captures
