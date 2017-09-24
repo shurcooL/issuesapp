@@ -266,13 +266,12 @@ type User struct {
 
 func (u User) Render() []*html.Node {
 	// TODO: Make this much nicer.
-	// <a class="black" href="{{.HTMLURL}}" target="_blank"><strong>{{.Login}}</strong></a>
+	// <a class="black" href="{{.HTMLURL}}"><strong>{{.Login}}</strong></a>
 	a := &html.Node{
 		Type: html.ElementNode, Data: atom.A.String(),
 		Attr: []html.Attribute{
 			{Key: atom.Class.String(), Val: "black"},
 			{Key: atom.Href.String(), Val: u.User.HTMLURL},
-			{Key: atom.Target.String(), Val: "_blank"},
 		},
 		FirstChild: htmlg.Strong(u.User.Login),
 	}
@@ -287,7 +286,7 @@ type Avatar struct {
 
 func (a Avatar) Render() []*html.Node {
 	// TODO: Make this much nicer.
-	// <a style="..." href="{{.User.HTMLURL}}" target="_blank" tabindex=-1>
+	// <a style="..." href="{{.User.HTMLURL}}" tabindex=-1>
 	// 	<img style="..." width="{{.Size}}" height="{{.Size}}" src="{{.User.AvatarURL}}">
 	// </a>
 	return []*html.Node{{
@@ -295,7 +294,6 @@ func (a Avatar) Render() []*html.Node {
 		Attr: []html.Attribute{
 			{Key: atom.Style.String(), Val: "display: inline-block;"},
 			{Key: atom.Href.String(), Val: a.User.HTMLURL},
-			{Key: atom.Target.String(), Val: "_blank"},
 			{Key: atom.Tabindex.String(), Val: "-1"},
 		},
 		FirstChild: &html.Node{
