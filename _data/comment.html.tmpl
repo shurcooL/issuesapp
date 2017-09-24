@@ -2,11 +2,7 @@
 {{define "comment"}}
 <div class="comment-edit-container">
 	<div>
-		<div class="avatar-container">
-			<a href="{{.User.HTMLURL}}" target="_blank" tabindex=-1>
-				<img class="comment-avatar" width="48" height="48" src="{{.User.AvatarURL}}">
-			</a>
-		</div>
+		<div style="float: left; margin-right: 10px;">{{render (avatar .User)}}</div>
 		<div id="comment-{{.ID}}" style="display: flex;" class="list-entry">
 			<div class="list-entry-container list-entry-border">
 				<div class="list-entry-header" style="display: flex;">

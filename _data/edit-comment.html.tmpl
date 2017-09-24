@@ -1,11 +1,7 @@
 {{/* TODO: Dedup with new-comment, only buttons differ, so factor them out. */}}
 {{define "edit-comment"}}
 <div style="display: flex;" class="edit-container list-entry">
-	<div>
-		<a href="{{.User.HTMLURL}}" target="_blank" tabindex=-1>
-			<img class="comment-avatar" width="48" height="48" src="{{.User.AvatarURL}}">
-		</a>
-	</div>
+	<div style="margin-right: 10px;">{{render (avatar .User)}}</div>
 	<div class="list-entry-border" style="flex-grow: 1;">
 		<div class="list-entry-header tabs" style="display: flex;">
 			<span style="flex-grow: 1; font-size: 14px;">

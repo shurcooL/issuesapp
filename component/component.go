@@ -279,6 +279,37 @@ func (u User) Render() []*html.Node {
 	return []*html.Node{a}
 }
 
+// Avatar is an avatar component.
+type Avatar struct {
+	User users.User
+	Size int // In pixels, e.g., 48.
+}
+
+func (a Avatar) Render() []*html.Node {
+	// TODO: Make this much nicer.
+	// <a style="..." href="{{.User.HTMLURL}}" target="_blank" tabindex=-1>
+	// 	<img style="..." width="{{.Size}}" height="{{.Size}}" src="{{.User.AvatarURL}}">
+	// </a>
+	return []*html.Node{{
+		Type: html.ElementNode, Data: atom.A.String(),
+		Attr: []html.Attribute{
+			{Key: atom.Style.String(), Val: "display: inline-block;"},
+			{Key: atom.Href.String(), Val: a.User.HTMLURL},
+			{Key: atom.Target.String(), Val: "_blank"},
+			{Key: atom.Tabindex.String(), Val: "-1"},
+		},
+		FirstChild: &html.Node{
+			Type: html.ElementNode, Data: atom.Img.String(),
+			Attr: []html.Attribute{
+				{Key: atom.Style.String(), Val: "border-radius: 3px;"},
+				{Key: atom.Width.String(), Val: fmt.Sprint(a.Size)},
+				{Key: atom.Height.String(), Val: fmt.Sprint(a.Size)},
+				{Key: atom.Src.String(), Val: a.User.AvatarURL},
+			},
+		},
+	}}
+}
+
 // Time component that displays human friendly relative time (e.g., "2 hours ago", "yesterday"),
 // but also contains a tooltip with the full absolute time (e.g., "Jan 2, 2006, 3:04 PM MST").
 //

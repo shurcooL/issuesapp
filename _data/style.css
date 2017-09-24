@@ -23,9 +23,6 @@ div.list-entry-container {
 	width: 100%;
 	box-sizing: border-box;
 }
-div.avatar-container {
-	float: left;
-}
 div.list-entry-border {
 	border: 1px solid #ddd;
 	border-radius: 4px;
@@ -87,10 +84,6 @@ span.right-icon a:hover {
 	color: black;
 }
 
-.comment-avatar {
-	margin-right: 10px;
-	border-radius: 3px;
-}
 img.topbar-avatar {
 	border-radius: 2px;
 	width: 18px;

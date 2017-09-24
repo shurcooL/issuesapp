@@ -1,11 +1,7 @@
 {{define "new-comment"}}
 {{if .CurrentUser.ID}}
 	<div id="new-comment-container" class="edit-container list-entry" style="display: flex;">
-		<div>
-			<a href="{{.CurrentUser.HTMLURL}}" target="_blank" tabindex=-1>
-				<img class="comment-avatar" width="48" height="48" src="{{.CurrentUser.AvatarURL}}">
-			</a>
-		</div>
+		<div style="margin-right: 10px;">{{render (avatar .CurrentUser)}}</div>
 		<div class="list-entry-border" style="flex-grow: 1;">
 			<div class="list-entry-header tabs" style="display: flex;">
 				<span style="flex-grow: 1; font-size: 14px;">

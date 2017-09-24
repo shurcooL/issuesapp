@@ -153,7 +153,8 @@ func (mockUsers) Get(_ context.Context, user users.UserSpec) (users.User, error)
 			Login:     "gopher",
 			Name:      "Sample Gopher",
 			Email:     "gopher@example.org",
-			AvatarURL: "https://avatars0.githubusercontent.com/u/8566911?v=4&s=32",
+			AvatarURL: "https://avatars0.githubusercontent.com/u/8566911?v=4&s=96",
+			HTMLURL:   "https://github.com/gopherbot",
 		}, nil
 	default:
 		return users.User{}, fmt.Errorf("user %v not found", user)

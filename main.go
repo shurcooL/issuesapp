@@ -588,6 +588,7 @@ func loadTemplates(state common.State, bodyPre string) (*template.Template, erro
 		"issueStateBadge": func(i issues.Issue) htmlg.Component { return component.IssueStateBadge{Issue: i} },
 		"time":            func(t time.Time) htmlg.Component { return component.Time{Time: t} },
 		"user":            func(u users.User) htmlg.Component { return component.User{User: u} },
+		"avatar":          func(u users.User) htmlg.Component { return component.Avatar{User: u, Size: 48} },
 	})
 	t, err := vfstemplate.ParseGlob(assets.Assets, t, "/assets/*.tmpl")
 	if err != nil {
