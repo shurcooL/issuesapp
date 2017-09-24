@@ -25,7 +25,7 @@ func (i Issues) Render() []*html.Node {
 	// 	{{with .Issues}}{{range .}}
 	// 		{{render .}}
 	// 	{{end}}{{else}}
-	// 		<div style="text-align: center; margin-top: 80px; margin-bottom: 80px;">There aren't any {{.Filter}} issues.</div>
+	// 		<div style="text-align: center; margin-top: 80px; margin-bottom: 80px;">There are no {{.Filter}} issues.</div>
 	// 	{{end}}
 	// </div>
 
@@ -42,9 +42,9 @@ func (i Issues) Render() []*html.Node {
 		}
 		switch i.Filter {
 		default:
-			div.AppendChild(htmlg.Text(fmt.Sprintf("There aren't any %s issues.", i.Filter)))
+			div.AppendChild(htmlg.Text(fmt.Sprintf("There are no %s issues.", i.Filter)))
 		case issues.AllStates:
-			div.AppendChild(htmlg.Text("There aren't any issues."))
+			div.AppendChild(htmlg.Text("There are no issues."))
 		}
 		ns = append(ns, div)
 	}
