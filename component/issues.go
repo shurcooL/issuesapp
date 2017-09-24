@@ -110,6 +110,7 @@ func (i IssueEntry) Render() []*html.Node {
 		titleAndByline.AppendChild(title)
 
 		byline := htmlg.DivClass("gray tiny")
+		byline.Attr = append(byline.Attr, html.Attribute{Key: atom.Style.String(), Val: "margin-top: 2px;"})
 		byline.AppendChild(htmlg.Text(fmt.Sprintf("#%d opened ", i.Issue.ID)))
 		htmlg.AppendChildren(byline, Time{Time: i.Issue.CreatedAt}.Render()...)
 		byline.AppendChild(htmlg.Text(fmt.Sprintf(" by %s", i.Issue.User.Login)))
