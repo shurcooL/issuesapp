@@ -39,8 +39,14 @@ func main() {
 	}
 	an := asana.NewClient(&http.Client{Transport: cacheTransport})
 
-	usersService := anusers.NewService(an)
-	service := anissues.NewService(an, usersService)
+	usersService, err := anusers.NewService(an)
+	if err != nil {
+		log.Fatalln("anusers.NewService:", err)
+	}
+	service, err := anissues.NewService(an)
+	if err != nil {
+		log.Fatalln("anissues.NewService:", err)
+	}
 
 	issuesOpt := issuesapp.Options{
 		HeadPre: `<link href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha/css/bootstrap.css" media="all" rel="stylesheet" type="text/css" />
@@ -85,7 +91,7 @@ func main() {
 	r.PathPrefix("/app.asana.com/0/{projectID}/").Handler(asanaHandler)
 
 	printServingAt(*httpFlag)
-	err := http.ListenAndServe(*httpFlag, r)
+	err = http.ListenAndServe(*httpFlag, r)
 	if err != nil {
 		log.Fatalln("ListenAndServe:", err)
 	}

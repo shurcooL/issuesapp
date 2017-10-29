@@ -50,14 +50,23 @@ func main() {
 	ghV3 := github.NewClient(httpClient)
 	ghV4 := githubql.NewClient(httpClient)
 
-	usersService := ghusers.NewService(ghV3)
-	notificationsService := ghnotifications.NewService(ghV3, ghV4)
+	usersService, err := ghusers.NewService(ghV3)
+	if err != nil {
+		log.Fatalln("ghusers.NewService:", err)
+	}
+	notificationsService := ghnotifications.NewService(ghV3, ghV4, nil)
 	var service issues.Service
 	switch 1 {
 	case 0:
-		service = ghissues.NewService(ghV3, notificationsService, usersService)
+		service, err = ghissues.NewService(ghV3, notificationsService)
+		if err != nil {
+			log.Fatalln("ghissues.NewService:", err)
+		}
 	case 1:
-		service = ghqlissues.NewService(ghV3, ghV4, notificationsService, usersService)
+		service, err = ghqlissues.NewService(ghV3, ghV4, notificationsService)
+		if err != nil {
+			log.Fatalln("ghqlissues.NewService:", err)
+		}
 	}
 
 	r := mux.NewRouter()
@@ -164,7 +173,7 @@ func main() {
 	r.PathPrefix("/emojis/").Handler(http.StripPrefix("/emojis", emojisHandler))
 
 	printServingAt(*httpFlag)
-	err := http.ListenAndServe(*httpFlag, r)
+	err = http.ListenAndServe(*httpFlag, r)
 	if err != nil {
 		log.Fatalln("ListenAndServe:", err)
 	}
