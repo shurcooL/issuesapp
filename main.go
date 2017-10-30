@@ -261,13 +261,12 @@ func (s state) augmentUnread(ctx context.Context, es []component.IssueEntry, is 
 	}
 
 	tt, ok := is.(interface {
-		ThreadType() string
+		ThreadType(issues.RepoSpec) string
 	})
 	if !ok {
 		log.Println("augmentUnread: issues service doesn't implement ThreadType")
 		return es
 	}
-	threadType := tt.ThreadType()
 
 	if s.CurrentUser.ID == 0 {
 		// Unauthenticated user cannot have any unread issues.
@@ -285,7 +284,9 @@ func (s state) augmentUnread(ctx context.Context, es []component.IssueEntry, is 
 
 	unreadThreads := make(map[uint64]struct{}) // Set of unread thread IDs.
 	for _, n := range ns {
-		if n.ThreadType != threadType { // Assumes RepoSpec matches because we filtered via notifications.ListOptions.
+		// n.RepoSpec == s.RepoSpec is guaranteed because we filtered in notifications.ListOptions,
+		// so we only need to check that n.ThreadType matches.
+		if n.ThreadType != tt.ThreadType(s.RepoSpec) {
 			continue
 		}
 		unreadThreads[n.ThreadID] = struct{}{}
