@@ -86,8 +86,18 @@ func (e Event) icon() *html.Node {
 
 func (e Event) text() []*html.Node {
 	switch e.Event.Type {
-	case issues.Reopened, issues.Closed:
-		return []*html.Node{htmlg.Text(fmt.Sprintf("%s this", e.Event.Type))}
+	case issues.Reopened:
+		return []*html.Node{htmlg.Text("reopened this")}
+	case issues.Closed:
+		ns := []*html.Node{htmlg.Text("closed this")}
+		if e.Event.Close.CommitID != "" {
+			ns = append(ns, htmlg.Text(" in "))
+			ns = append(ns, commitID{
+				SHA:     e.Event.Close.CommitID,
+				HTMLURL: e.Event.Close.CommitHTMLURL,
+			}.Render()...)
+		}
+		return ns
 	case issues.Renamed:
 		return []*html.Node{htmlg.Text("changed the title from "), htmlg.Strong(e.Event.Rename.From), htmlg.Text(" to "), htmlg.Strong(e.Event.Rename.To)}
 	case issues.Labeled:
@@ -325,4 +335,31 @@ func (t Time) Render() []*html.Node {
 		FirstChild: htmlg.Text(humanize.Time(t.Time)),
 	}
 	return []*html.Node{abbr}
+}
+
+// commitID is a component that displays a linked commit ID. E.g., "c0de1234".
+type commitID struct {
+	SHA     string
+	HTMLURL string // Optional.
+}
+
+func (c commitID) Render() []*html.Node {
+	sha := &html.Node{
+		Type: html.ElementNode, Data: atom.Code.String(),
+		Attr: []html.Attribute{
+			{Key: atom.Style.String(), Val: "width: 8ch; overflow: hidden; display: inline-grid; white-space: nowrap;"},
+			{Key: atom.Title.String(), Val: c.SHA},
+		},
+		FirstChild: htmlg.Text(c.SHA),
+	}
+	if c.HTMLURL != "" {
+		sha = &html.Node{
+			Type: html.ElementNode, Data: atom.A.String(),
+			Attr: []html.Attribute{
+				{Key: atom.Href.String(), Val: c.HTMLURL},
+			},
+			FirstChild: sha,
+		}
+	}
+	return []*html.Node{sha}
 }
