@@ -28,7 +28,6 @@ import (
 	"golang.org/x/oauth2"
 
 	ghissues "github.com/shurcooL/issues/githubapi"
-	ghqlissues "github.com/shurcooL/issues/githubqlapi"
 	ghnotifications "github.com/shurcooL/notifications/githubapi"
 	ghusers "github.com/shurcooL/users/githubapi"
 )
@@ -55,18 +54,9 @@ func main() {
 		log.Fatalln("ghusers.NewService:", err)
 	}
 	notificationsService := ghnotifications.NewService(ghV3, ghV4, nil)
-	var service issues.Service
-	switch 1 {
-	case 0:
-		service, err = ghissues.NewService(ghV3, notificationsService)
-		if err != nil {
-			log.Fatalln("ghissues.NewService:", err)
-		}
-	case 1:
-		service, err = ghqlissues.NewService(ghV3, ghV4, notificationsService)
-		if err != nil {
-			log.Fatalln("ghqlissues.NewService:", err)
-		}
+	service, err := ghissues.NewService(ghV3, ghV4, notificationsService)
+	if err != nil {
+		log.Fatalln("ghissues.NewService:", err)
 	}
 
 	r := mux.NewRouter()
