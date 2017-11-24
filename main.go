@@ -87,7 +87,7 @@ func New(service issues.Service, users users.Service, opt Options) http.Handler 
 	}
 }
 
-// RepoSpecContextKey is a context key for the request's issues.RepoSpec.
+// RepoSpecContextKey is a context key for the request's repository specification.
 // That value specifies which repo the issues are to be displayed for.
 // The associated value will be of type issues.RepoSpec.
 var RepoSpecContextKey = &contextKey{"RepoSpec"}
@@ -96,6 +96,11 @@ var RepoSpecContextKey = &contextKey{"RepoSpec"}
 // That value specifies the base URI prefix to use for all absolute URLs.
 // The associated value will be of type string.
 var BaseURIContextKey = &contextKey{"BaseURI"}
+
+// StateContextKey is a context key for the request's common state.
+// That value specifies the common state of the page being rendered.
+// The associated value will be of type common.State.
+var StateContextKey = &contextKey{"State"}
 
 // Options for configuring issues app.
 type Options struct {
@@ -106,6 +111,7 @@ type Options struct {
 	BodyPre           string // An html/template definition of "body-pre" template.
 
 	// BodyTop provides components to include on top of <body> of page rendered for req. It can be nil.
+	// StateContextKey can be used to get the common state value.
 	BodyTop func(req *http.Request) ([]htmlg.Component, error)
 }
 
@@ -491,7 +497,7 @@ func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
 	b.HeadPre = h.HeadPre
 	b.HeadPost = h.HeadPost
 	if h.BodyTop != nil {
-		c, err := h.BodyTop(req)
+		c, err := h.BodyTop(req.WithContext(context.WithValue(req.Context(), StateContextKey, b.State)))
 		if err != nil {
 			return state{}, err
 		}
