@@ -126,8 +126,6 @@ func ExampleIssues_List() {
 	// 			"Email": "gopher@example.org",
 	// 			"AvatarURL": "",
 	// 			"HTMLURL": "",
-	// 			"CreatedAt": "0001-01-01T00:00:00Z",
-	// 			"UpdatedAt": "0001-01-01T00:00:00Z",
 	// 			"SiteAdmin": false
 	// 		},
 	// 		"CreatedAt": "2016-09-24T22:00:50.642521756Z",
@@ -175,8 +173,6 @@ func ExampleIssues_ListComments() {
 	// 			"Email": "gopher@example.org",
 	// 			"AvatarURL": "",
 	// 			"HTMLURL": "",
-	// 			"CreatedAt": "0001-01-01T00:00:00Z",
-	// 			"UpdatedAt": "0001-01-01T00:00:00Z",
 	// 			"SiteAdmin": false
 	// 		},
 	// 		"CreatedAt": "2016-09-24T22:00:50.642521756Z",
@@ -195,8 +191,6 @@ func ExampleIssues_ListComments() {
 	// 						"Email": "gopher@example.org",
 	// 						"AvatarURL": "",
 	// 						"HTMLURL": "",
-	// 						"CreatedAt": "0001-01-01T00:00:00Z",
-	// 						"UpdatedAt": "0001-01-01T00:00:00Z",
 	// 						"SiteAdmin": false
 	// 					}
 	// 				]
@@ -213,8 +207,6 @@ func ExampleIssues_ListComments() {
 	// 						"Email": "",
 	// 						"AvatarURL": "https://secure.gravatar.com/avatar?d=mm\u0026f=y\u0026s=96",
 	// 						"HTMLURL": "",
-	// 						"CreatedAt": "0001-01-01T00:00:00Z",
-	// 						"UpdatedAt": "0001-01-01T00:00:00Z",
 	// 						"SiteAdmin": false
 	// 					},
 	// 					{
@@ -226,8 +218,6 @@ func ExampleIssues_ListComments() {
 	// 						"Email": "gopher@example.org",
 	// 						"AvatarURL": "",
 	// 						"HTMLURL": "",
-	// 						"CreatedAt": "0001-01-01T00:00:00Z",
-	// 						"UpdatedAt": "0001-01-01T00:00:00Z",
 	// 						"SiteAdmin": false
 	// 					},
 	// 					{
@@ -239,8 +229,6 @@ func ExampleIssues_ListComments() {
 	// 						"Email": "",
 	// 						"AvatarURL": "https://secure.gravatar.com/avatar?d=mm\u0026f=y\u0026s=96",
 	// 						"HTMLURL": "",
-	// 						"CreatedAt": "0001-01-01T00:00:00Z",
-	// 						"UpdatedAt": "0001-01-01T00:00:00Z",
 	// 						"SiteAdmin": false
 	// 					}
 	// 				]
@@ -257,8 +245,6 @@ func ExampleIssues_ListComments() {
 	// 						"Email": "",
 	// 						"AvatarURL": "https://secure.gravatar.com/avatar?d=mm\u0026f=y\u0026s=96",
 	// 						"HTMLURL": "",
-	// 						"CreatedAt": "0001-01-01T00:00:00Z",
-	// 						"UpdatedAt": "0001-01-01T00:00:00Z",
 	// 						"SiteAdmin": false
 	// 					}
 	// 				]
@@ -277,8 +263,6 @@ func ExampleIssues_ListComments() {
 	// 			"Email": "",
 	// 			"AvatarURL": "https://secure.gravatar.com/avatar?d=mm\u0026f=y\u0026s=96",
 	// 			"HTMLURL": "",
-	// 			"CreatedAt": "0001-01-01T00:00:00Z",
-	// 			"UpdatedAt": "0001-01-01T00:00:00Z",
 	// 			"SiteAdmin": false
 	// 		},
 	// 		"CreatedAt": "2016-10-02T12:31:50.813167602Z",
@@ -298,8 +282,6 @@ func ExampleIssues_ListComments() {
 	// 			"Email": "gopher@example.org",
 	// 			"AvatarURL": "",
 	// 			"HTMLURL": "",
-	// 			"CreatedAt": "0001-01-01T00:00:00Z",
-	// 			"UpdatedAt": "0001-01-01T00:00:00Z",
 	// 			"SiteAdmin": false
 	// 		},
 	// 		"CreatedAt": "2016-10-02T18:51:14.250725508Z",
@@ -313,8 +295,6 @@ func ExampleIssues_ListComments() {
 	// 				"Email": "gopher@example.org",
 	// 				"AvatarURL": "",
 	// 				"HTMLURL": "",
-	// 				"CreatedAt": "0001-01-01T00:00:00Z",
-	// 				"UpdatedAt": "0001-01-01T00:00:00Z",
 	// 				"SiteAdmin": false
 	// 			},
 	// 			"At": "2016-10-02T18:57:47.938813179Z"
