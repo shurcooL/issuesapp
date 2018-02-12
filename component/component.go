@@ -277,6 +277,9 @@ type User struct {
 func (u User) Render() []*html.Node {
 	// TODO: Make this much nicer.
 	// <a class="black" href="{{.HTMLURL}}"><strong>{{.Login}}</strong></a>
+	if u.User.Login == "" {
+		return []*html.Node{htmlg.Text(u.User.Name)}
+	}
 	a := &html.Node{
 		Type: html.ElementNode, Data: atom.A.String(),
 		Attr: []html.Attribute{
