@@ -317,22 +317,33 @@ func (h *handler) IssueHandler(w http.ResponseWriter, req *http.Request, issueID
 	if err != nil {
 		return err
 	}
-	cs, err := h.is.ListComments(req.Context(), state.RepoSpec, state.IssueID, nil)
-	if err != nil {
-		return fmt.Errorf("issues.ListComments: %v", err)
-	}
-	es, err := h.is.ListEvents(req.Context(), state.RepoSpec, state.IssueID, nil)
-	if err != nil {
-		return fmt.Errorf("issues.ListEvents: %v", err)
-	}
 	var items []issueItem
-	for _, comment := range cs {
-		items = append(items, issueItem{comment})
+	switch is, ok := h.is.(issues.TimelineLister); ok && is.IsTimelineLister(state.RepoSpec) {
+	case true:
+		tis, err := is.ListTimeline(req.Context(), state.RepoSpec, state.IssueID, nil)
+		if err != nil {
+			return fmt.Errorf("issues.ListTimeline: %v", err)
+		}
+		for _, timelineItem := range tis {
+			items = append(items, issueItem{timelineItem})
+		}
+	case false:
+		cs, err := h.is.ListComments(req.Context(), state.RepoSpec, state.IssueID, nil)
+		if err != nil {
+			return fmt.Errorf("issues.ListComments: %v", err)
+		}
+		es, err := h.is.ListEvents(req.Context(), state.RepoSpec, state.IssueID, nil)
+		if err != nil {
+			return fmt.Errorf("issues.ListEvents: %v", err)
+		}
+		for _, comment := range cs {
+			items = append(items, issueItem{comment})
+		}
+		for _, event := range es {
+			items = append(items, issueItem{event})
+		}
+		sort.Sort(byCreatedAtID(items))
 	}
-	for _, event := range es {
-		items = append(items, issueItem{event})
-	}
-	sort.Sort(byCreatedAtID(items))
 	state.Items = items
 	// Call loadTemplates to set updated reactionsBar, reactableID, etc., template functions.
 	t, err := loadTemplates(state.State, h.Options.BodyPre)
