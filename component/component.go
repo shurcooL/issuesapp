@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"time"
 
+	"dmitri.shuralyov.com/html/belt"
 	"github.com/dustin/go-humanize"
 	"github.com/shurcooL/htmlg"
 	"github.com/shurcooL/issues"
@@ -92,7 +93,7 @@ func (e Event) text() []*html.Node {
 		ns := []*html.Node{htmlg.Text("closed this")}
 		if e.Event.Close.CommitID != "" {
 			ns = append(ns, htmlg.Text(" in "))
-			ns = append(ns, commitID{
+			ns = append(ns, belt.CommitID{
 				SHA:     e.Event.Close.CommitID,
 				HTMLURL: e.Event.Close.CommitHTMLURL,
 			}.Render()...)
@@ -338,31 +339,4 @@ func (t Time) Render() []*html.Node {
 		FirstChild: htmlg.Text(humanize.Time(t.Time)),
 	}
 	return []*html.Node{abbr}
-}
-
-// commitID is a component that displays a linked commit ID. E.g., "c0de1234".
-type commitID struct {
-	SHA     string
-	HTMLURL string // Optional.
-}
-
-func (c commitID) Render() []*html.Node {
-	sha := &html.Node{
-		Type: html.ElementNode, Data: atom.Code.String(),
-		Attr: []html.Attribute{
-			{Key: atom.Style.String(), Val: "width: 8ch; overflow: hidden; display: inline-grid; white-space: nowrap;"},
-			{Key: atom.Title.String(), Val: c.SHA},
-		},
-		FirstChild: htmlg.Text(c.SHA),
-	}
-	if c.HTMLURL != "" {
-		sha = &html.Node{
-			Type: html.ElementNode, Data: atom.A.String(),
-			Attr: []html.Attribute{
-				{Key: atom.Href.String(), Val: c.HTMLURL},
-			},
-			FirstChild: sha,
-		}
-	}
-	return []*html.Node{sha}
 }
