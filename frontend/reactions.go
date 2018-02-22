@@ -17,7 +17,7 @@ type IssuesReactions struct {
 	Issues issues.Service
 }
 
-// Toggle toggles an issue.
+// Toggle toggles a reaction on an issue comment.
 // id is "{{.issueID}}/{{.commentID}}".
 func (ir IssuesReactions) Toggle(ctx context.Context, uri string, id string, tr reactions.ToggleRequest) ([]reactions.Reaction, error) {
 	var issueID, commentID uint64
@@ -35,10 +35,10 @@ func (ir IssuesReactions) Toggle(ctx context.Context, uri string, id string, tr 
 	return comment.Reactions, nil
 }
 
-func (ir IssuesReactions) Get(_ context.Context, uri string, id string) ([]reactions.Reaction, error) {
+func (IssuesReactions) Get(_ context.Context, uri string, id string) ([]reactions.Reaction, error) {
 	return nil, errors.New("IssuesReactions.Get: not implemented")
 }
 
-func (ir IssuesReactions) List(_ context.Context, uri string) (map[string][]reactions.Reaction, error) {
+func (IssuesReactions) List(_ context.Context, uri string) (map[string][]reactions.Reaction, error) {
 	return nil, errors.New("IssuesReactions.List: not implemented")
 }
