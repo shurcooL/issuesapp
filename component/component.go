@@ -91,11 +91,23 @@ func (e Event) text() []*html.Node {
 		return []*html.Node{htmlg.Text("reopened this")}
 	case issues.Closed:
 		ns := []*html.Node{htmlg.Text("closed this")}
-		if e.Event.Close.CommitID != "" {
+		switch c := e.Event.Close.Closer.(type) {
+		case issues.Change:
 			ns = append(ns, htmlg.Text(" in "))
-			ns = append(ns, belt.CommitID{
-				SHA:     e.Event.Close.CommitID,
-				HTMLURL: e.Event.Close.CommitHTMLURL,
+			ns = append(ns, belt.Change{
+				State:   c.State,
+				Title:   c.Title,
+				HTMLURL: c.HTMLURL,
+				Short:   true,
+			}.Render()...)
+		case issues.Commit:
+			ns = append(ns, htmlg.Text(" in "))
+			ns = append(ns, belt.Commit{
+				SHA:             c.SHA,
+				Message:         c.Message,
+				AuthorAvatarURL: c.AuthorAvatarURL,
+				HTMLURL:         c.HTMLURL,
+				Short:           true,
 			}.Render()...)
 		}
 		return ns
