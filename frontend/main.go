@@ -66,6 +66,7 @@ func main() {
 
 func setup(f *frontend) {
 	setupIssueToggleButton()
+	setupScroll()
 
 	if createIssueButton, ok := document.GetElementByID("create-issue-button").(dom.HTMLElement); ok {
 		titleEditor := document.GetElementByID("title-editor").(*dom.HTMLInputElement)

@@ -10,7 +10,7 @@ import (
 	"honnef.co/go/js/dom"
 )
 
-func init() {
+func setupScroll() {
 	js.Global.Set("AnchorScroll", jsutil.Wrap(AnchorScroll))
 
 	processHashSet := func() {
@@ -38,12 +38,8 @@ func init() {
 		event.PreventDefault()
 	})
 
-	document.AddEventListener("keydown", false, func(event dom.Event) {
+	document.Body().AddEventListener("keydown", false, func(event dom.Event) {
 		if event.DefaultPrevented() {
-			return
-		}
-		// Ignore when some element other than body has focus (it means the user is typing elsewhere).
-		if !event.Target().IsEqualNode(document.Body()) {
 			return
 		}
 
