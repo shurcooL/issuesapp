@@ -12,7 +12,11 @@ import (
 	"honnef.co/go/js/dom"
 )
 
-func (f *frontend) EditComment(action string, this dom.HTMLElement) {
+func (f *frontend) EditComment(action string, this dom.HTMLElement, evt dom.Event) {
+	if evt.DefaultPrevented() {
+		return
+	}
+
 	container := getAncestorByClassName(this, "comment-edit-container")
 	// HACK: Currently the child nodes are [text, div, text, div, text], but that isn't reliable.
 	commentView := container.ChildNodes()[1].(dom.HTMLElement)

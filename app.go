@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"strings"
 
 	"github.com/shurcooL/home/httputil"
 	"github.com/shurcooL/httpgzip"
@@ -56,7 +57,7 @@ func run() error {
 	_, err = service.Create(context.Background(), repo, issues.Issue{
 		Title: "Some issue about something",
 		Comment: issues.Comment{
-			Body: "This is a test issue.",
+			Body: "This is a test issue." + strings.Repeat("\n\n...", 10),
 		},
 		Labels: []issues.Label{
 			{Name: "label", Color: issues.RGB{R: 224, G: 235, B: 245}},
