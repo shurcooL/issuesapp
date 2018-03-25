@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/gopherjs/gopherjs/js"
 	"github.com/shurcooL/go/gopherjs_http/jsutil"
@@ -13,27 +14,9 @@ import (
 func setupScroll() {
 	js.Global.Set("AnchorScroll", jsutil.Wrap(AnchorScroll))
 
-	processHashSet := func() {
-		// Scroll to hash target.
-		targetID := strings.TrimPrefix(dom.GetWindow().Location().Hash, "#")
-		target, ok := document.GetElementByID(targetID).(dom.HTMLElement)
-		if ok {
-			centerWindowOn(target)
-		}
-
-		processHash(target)
-	}
-	// Jump to desired hash after page finishes loading (and override browser's default hash jumping).
-	document.AddEventListener("DOMContentLoaded", false, func(_ dom.Event) {
-		go func() {
-			// This needs to be in a goroutine or else it "happens too early".
-			// TODO: See if there's a better event than DOMContentLoaded.
-			processHashSet()
-		}()
-	})
 	// Start watching for hashchange events.
 	dom.GetWindow().AddEventListener("hashchange", false, func(event dom.Event) {
-		processHashSet()
+		processHash()
 
 		event.PreventDefault()
 	})
@@ -52,11 +35,29 @@ func setupScroll() {
 
 			setFragment("")
 
-			processHashSet()
+			highlight(nil)
 
 			ke.PreventDefault()
 		}
 	})
+
+	// Jump to desired hash slightly after page loads (override browser's default hash jumping).
+	go func() {
+		// This needs to be delayed, or else it "happens too early".
+		time.Sleep(time.Millisecond)
+		processHash()
+	}()
+}
+
+func processHash() {
+	// Scroll to hash target.
+	targetID := strings.TrimPrefix(dom.GetWindow().Location().Hash, "#")
+	target, ok := document.GetElementByID(targetID).(dom.HTMLElement)
+	if ok {
+		centerWindowOn(target)
+	}
+
+	highlight(target)
 }
 
 // AnchorScroll scrolls window to target that is pointed by fragment of href of given anchor element.
@@ -75,22 +76,24 @@ func AnchorScroll(anchor dom.HTMLElement, e dom.Event) {
 	// TODO: Decide if it's better to do this or not to.
 	centerWindowOn(target)
 
-	processHash(target)
+	highlight(target)
 
 	e.PreventDefault()
 }
 
-// processHash highlights the selected element by giving it a "hash-selected" class.
-// target can be nil if there isn't a valid target.
-func processHash(target dom.HTMLElement) {
-	// Clear everything.
+// highlight highlights the selected element by giving it a "hash-selected" class.
+// target can be nil to highlight nothing.
+func highlight(target dom.HTMLElement) {
+	// Clear all past highlights.
 	for _, e := range document.GetElementsByClassName("hash-selected") {
 		e.Class().Remove("hash-selected")
 	}
 
-	if target != nil {
-		target.Class().Add("hash-selected")
+	// Highlight target, if any.
+	if target == nil {
+		return
 	}
+	target.Class().Add("hash-selected")
 }
 
 // centerWindowOn scrolls window so that (the middle of) target is in the middle of window.
