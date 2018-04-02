@@ -54,7 +54,7 @@ func main() {
 		log.Fatalln("ghusers.NewService:", err)
 	}
 	notificationsService := ghnotifications.NewService(ghV3, ghV4, nil)
-	service := ghissues.NewService(ghV3, ghV4, notificationsService)
+	service := ghissues.NewService(ghV3, ghV4, notificationsService, nil)
 
 	r := mux.NewRouter()
 
