@@ -13,10 +13,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/google/go-github/github"
+	githubv3 "github.com/google/go-github/github"
 	"github.com/gorilla/mux"
 	"github.com/gregjones/httpcache"
-	"github.com/shurcooL/githubql"
+	"github.com/shurcooL/githubv4"
 	"github.com/shurcooL/home/httputil"
 	"github.com/shurcooL/httpgzip"
 	"github.com/shurcooL/issues"
@@ -46,8 +46,8 @@ func main() {
 		cacheTransport.Transport = authTransport
 	}
 	httpClient := &http.Client{Transport: cacheTransport}
-	ghV3 := github.NewClient(httpClient)
-	ghV4 := githubql.NewClient(httpClient)
+	ghV3 := githubv3.NewClient(httpClient)
+	ghV4 := githubv4.NewClient(httpClient)
 
 	usersService, err := ghusers.NewService(ghV3)
 	if err != nil {
