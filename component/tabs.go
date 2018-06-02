@@ -5,7 +5,7 @@ import (
 	"net/url"
 
 	"github.com/shurcooL/htmlg"
-	"github.com/shurcooL/octiconssvg"
+	"github.com/shurcooL/octicon"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
@@ -91,7 +91,7 @@ func (t OpenIssuesTab) Render() []*html.Node {
 		Attr: []html.Attribute{
 			{Key: atom.Style.String(), Val: "margin-right: 4px;"},
 		},
-		FirstChild: octiconssvg.IssueOpened(),
+		FirstChild: octicon.IssueOpened(),
 	}
 	text := htmlg.Text(fmt.Sprintf("%d Open", t.Count))
 	return []*html.Node{icon, text}
@@ -111,7 +111,7 @@ func (t ClosedIssuesTab) Render() []*html.Node {
 		Attr: []html.Attribute{
 			{Key: atom.Style.String(), Val: "margin-right: 4px;"},
 		},
-		FirstChild: octiconssvg.Check(),
+		FirstChild: octicon.Check(),
 	}
 	text := htmlg.Text(fmt.Sprintf("%d Closed", t.Count))
 	return []*html.Node{icon, text}

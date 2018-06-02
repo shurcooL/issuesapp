@@ -28,7 +28,7 @@ import (
 	"github.com/shurcooL/issuesapp/common"
 	"github.com/shurcooL/issuesapp/component"
 	"github.com/shurcooL/notifications"
-	"github.com/shurcooL/octiconssvg"
+	"github.com/shurcooL/octicon"
 	"github.com/shurcooL/reactions"
 	reactionscomponent "github.com/shurcooL/reactions/component"
 	"github.com/shurcooL/users"
@@ -587,7 +587,7 @@ func loadTemplates(state common.State, bodyPre string) (*template.Template, erro
 		"state": func() common.State { return state },
 
 		"octicon": func(name string) (template.HTML, error) {
-			icon := octiconssvg.Icon(name)
+			icon := octicon.Icon(name)
 			if icon == nil {
 				return "", fmt.Errorf("%q is not a valid Octicon symbol name", name)
 			}

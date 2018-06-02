@@ -10,7 +10,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/shurcooL/htmlg"
 	"github.com/shurcooL/issues"
-	"github.com/shurcooL/octiconssvg"
+	"github.com/shurcooL/octicon"
 	"github.com/shurcooL/users"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
@@ -61,19 +61,19 @@ func (e Event) icon() *html.Node {
 	)
 	switch e.Event.Type {
 	case issues.Reopened:
-		icon = octiconssvg.PrimitiveDot()
+		icon = octicon.PrimitiveDot()
 		color, backgroundColor = "#fff", "#6cc644"
 	case issues.Closed:
-		icon = octiconssvg.CircleSlash()
+		icon = octicon.CircleSlash()
 		color, backgroundColor = "#fff", "#bd2c00"
 	case issues.Renamed:
-		icon = octiconssvg.Pencil()
+		icon = octicon.Pencil()
 	case issues.Labeled, issues.Unlabeled:
-		icon = octiconssvg.Tag()
+		icon = octicon.Tag()
 	case issues.CommentDeleted:
-		icon = octiconssvg.X()
+		icon = octicon.X()
 	default:
-		icon = octiconssvg.PrimitiveDot()
+		icon = octicon.PrimitiveDot()
 	}
 	return &html.Node{
 		Type: html.ElementNode, Data: atom.Span.String(),
@@ -178,11 +178,11 @@ func (ib IssueBadge) Render() []*html.Node {
 	)
 	switch ib.State {
 	case issues.OpenState:
-		icon = octiconssvg.IssueOpened()
+		icon = octicon.IssueOpened()
 		text = "Open"
 		color = "#6cc644"
 	case issues.ClosedState:
-		icon = octiconssvg.IssueClosed()
+		icon = octicon.IssueClosed()
 		text = "Closed"
 		color = "#bd2c00"
 	default:
@@ -226,10 +226,10 @@ func (ii IssueIcon) Render() []*html.Node {
 	)
 	switch ii.State {
 	case issues.OpenState:
-		icon = octiconssvg.IssueOpened()
+		icon = octicon.IssueOpened()
 		color = "#6cc644"
 	case issues.ClosedState:
-		icon = octiconssvg.IssueClosed()
+		icon = octicon.IssueClosed()
 		color = "#bd2c00"
 	}
 	span := &html.Node{

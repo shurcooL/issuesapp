@@ -5,7 +5,7 @@ import (
 
 	"github.com/shurcooL/htmlg"
 	"github.com/shurcooL/issues"
-	"github.com/shurcooL/octiconssvg"
+	"github.com/shurcooL/octicon"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
@@ -132,7 +132,7 @@ func (i IssueEntry) Render() []*html.Node {
 			{Key: atom.Class.String(), Val: spanClass},
 		},
 	}
-	span.AppendChild(octiconssvg.Comment())
+	span.AppendChild(octicon.Comment())
 	span.AppendChild(htmlg.Text(fmt.Sprintf(" %d", i.Issue.Replies)))
 	div.AppendChild(span)
 
