@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/shurcooL/go/ctxhttp"
 	"github.com/shurcooL/issues"
 	"github.com/shurcooL/issuesapp/httproute"
+	"golang.org/x/net/context/ctxhttp"
 )
 
 // NewIssues creates a client that implements issues.Service remotely over HTTP.
