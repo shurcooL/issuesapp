@@ -112,7 +112,13 @@ func (e Event) text() []*html.Node {
 		}
 		return ns
 	case issues.Renamed:
-		return []*html.Node{htmlg.Text("changed the title from "), htmlg.Strong(e.Event.Rename.From), htmlg.Text(" to "), htmlg.Strong(e.Event.Rename.To)}
+		from := &html.Node{
+			Type: html.ElementNode, Data: atom.Del.String(),
+			Attr:       []html.Attribute{{Key: atom.Style.String(), Val: "font-weight: bold;"}},
+			FirstChild: htmlg.Text(e.Event.Rename.From),
+		}
+		to := htmlg.Strong(e.Event.Rename.To)
+		return []*html.Node{htmlg.Text("changed the title "), from, htmlg.Text(" "), to}
 	case issues.Labeled:
 		var ns []*html.Node
 		ns = append(ns, htmlg.Text("added the "))
