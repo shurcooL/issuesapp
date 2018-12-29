@@ -140,7 +140,7 @@ func ExampleIssues_List() {
 
 func ExampleIssues_Count() {
 	count, err := issuesClient.Count(context.Background(), issues.RepoSpec{URI: "example.org/repo"}, issues.IssueListOptions{
-		State: issues.StateFilter(issues.AllStates),
+		State: issues.AllStates,
 	})
 	if err != nil {
 		log.Fatalln(err)
