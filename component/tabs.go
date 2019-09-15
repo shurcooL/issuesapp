@@ -33,7 +33,7 @@ func (n IssuesNav) Render() []*html.Node {
 
 // tabs renders the HTML nodes for <nav> element with tab header links.
 func (n IssuesNav) tabs() []*html.Node {
-	selectedTabName := n.Query.Get(n.StateQueryKey)
+	selectedTabName := n.selectedTabName()
 	var ns []*html.Node
 	for i, tab := range []struct {
 		Name      string // Tab name corresponds to its state filter query value.
@@ -41,7 +41,7 @@ func (n IssuesNav) tabs() []*html.Node {
 	}{
 		// Note: The routing logic (i.e., exact tab Name values) is duplicated with tabStateFilter.
 		//       Might want to try to factor it out into a common location (e.g., a route package or so).
-		{Name: "", Component: OpenIssuesTab{Count: n.OpenCount}},
+		{Name: "open", Component: OpenIssuesTab{Count: n.OpenCount}},
 		{Name: "closed", Component: ClosedIssuesTab{Count: n.ClosedCount}},
 	} {
 		tabURL := (&url.URL{
@@ -66,10 +66,20 @@ func (n IssuesNav) tabs() []*html.Node {
 	return ns
 }
 
+const defaultTabName = "open"
+
+func (n IssuesNav) selectedTabName() string {
+	vs := n.Query[n.StateQueryKey]
+	if len(vs) == 0 {
+		return defaultTabName
+	}
+	return vs[0]
+}
+
 // rawQuery returns the raw query for a link pointing to tabName.
 func (n IssuesNav) rawQuery(tabName string) string {
 	q := n.Query
-	if tabName == "" {
+	if tabName == defaultTabName {
 		q.Del(n.StateQueryKey)
 		return q.Encode()
 	}
