@@ -113,6 +113,9 @@ type Options struct {
 	// BodyTop provides components to include on top of <body> of page rendered for req. It can be nil.
 	// StateContextKey can be used to get the common state value.
 	BodyTop func(req *http.Request) ([]htmlg.Component, error)
+
+	// SignIn returns HTML with a link or button to sign in. It can be nil.
+	SignIn func(returnURL string) template.HTML
 }
 
 // handler handles all requests to issuesapp. It acts like a request multiplexer,
@@ -522,6 +525,10 @@ func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
 
 	b.DisableReactions = h.Options.DisableReactions
 	b.DisableUsers = h.us == nil
+	if h.Options.SignIn != nil {
+		returnURL := b.BaseURI + b.ReqPath
+		b.SignIn = h.Options.SignIn(returnURL)
+	}
 
 	if h.us == nil {
 		// No user service provided, so there can never be an authenticated user.
@@ -540,6 +547,7 @@ func (h *handler) state(req *http.Request, issueID uint64) (state, error) {
 type state struct {
 	HeadPre, HeadPost template.HTML
 	BodyTop           template.HTML
+	SignIn            template.HTML
 
 	common.State
 

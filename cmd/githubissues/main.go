@@ -151,7 +151,7 @@ func main() {
 	r.Path("/notifications").Handler(notificationsHandler)
 	r.PathPrefix("/notifications/").Handler(notificationsHandler)
 
-	r.HandleFunc("/login/github", func(w http.ResponseWriter, req *http.Request) {
+	r.HandleFunc("/login", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		fmt.Fprintln(w, "Sorry, this is just a demo instance and it doesn't support signing in.")
 	})

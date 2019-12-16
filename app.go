@@ -128,7 +128,7 @@ func run() error {
 		issuesApp.ServeHTTP(w, req)
 	})
 
-	http.HandleFunc("/login/github", func(w http.ResponseWriter, req *http.Request) {
+	http.HandleFunc("/login", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		fmt.Fprintln(w, "Sorry, this is a read-only instance and it doesn't support signing in.")
 	})
