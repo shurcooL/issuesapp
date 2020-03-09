@@ -120,6 +120,7 @@ func ExampleIssues_List() {
 	// 		"User": {
 	// 			"ID": 1,
 	// 			"Domain": "example.org",
+	// 			"CanonicalMe": "",
 	// 			"Elsewhere": null,
 	// 			"Login": "gopher",
 	// 			"Name": "Sample Gopher",
@@ -167,6 +168,7 @@ func ExampleIssues_ListComments() {
 	// 		"User": {
 	// 			"ID": 1,
 	// 			"Domain": "example.org",
+	// 			"CanonicalMe": "",
 	// 			"Elsewhere": null,
 	// 			"Login": "gopher",
 	// 			"Name": "Sample Gopher",
@@ -185,6 +187,7 @@ func ExampleIssues_ListComments() {
 	// 					{
 	// 						"ID": 1,
 	// 						"Domain": "example.org",
+	// 						"CanonicalMe": "",
 	// 						"Elsewhere": null,
 	// 						"Login": "gopher",
 	// 						"Name": "Sample Gopher",
@@ -201,6 +204,7 @@ func ExampleIssues_ListComments() {
 	// 					{
 	// 						"ID": 2,
 	// 						"Domain": "example.org",
+	// 						"CanonicalMe": "",
 	// 						"Elsewhere": null,
 	// 						"Login": "2@example.org",
 	// 						"Name": "",
@@ -212,6 +216,7 @@ func ExampleIssues_ListComments() {
 	// 					{
 	// 						"ID": 1,
 	// 						"Domain": "example.org",
+	// 						"CanonicalMe": "",
 	// 						"Elsewhere": null,
 	// 						"Login": "gopher",
 	// 						"Name": "Sample Gopher",
@@ -223,6 +228,7 @@ func ExampleIssues_ListComments() {
 	// 					{
 	// 						"ID": 3,
 	// 						"Domain": "example.org",
+	// 						"CanonicalMe": "",
 	// 						"Elsewhere": null,
 	// 						"Login": "3@example.org",
 	// 						"Name": "",
@@ -239,6 +245,7 @@ func ExampleIssues_ListComments() {
 	// 					{
 	// 						"ID": 3,
 	// 						"Domain": "example.org",
+	// 						"CanonicalMe": "",
 	// 						"Elsewhere": null,
 	// 						"Login": "3@example.org",
 	// 						"Name": "",
@@ -257,6 +264,7 @@ func ExampleIssues_ListComments() {
 	// 		"User": {
 	// 			"ID": 2,
 	// 			"Domain": "example.org",
+	// 			"CanonicalMe": "",
 	// 			"Elsewhere": null,
 	// 			"Login": "2@example.org",
 	// 			"Name": "",
@@ -276,6 +284,7 @@ func ExampleIssues_ListComments() {
 	// 		"User": {
 	// 			"ID": 1,
 	// 			"Domain": "example.org",
+	// 			"CanonicalMe": "",
 	// 			"Elsewhere": null,
 	// 			"Login": "gopher",
 	// 			"Name": "Sample Gopher",
@@ -289,6 +298,7 @@ func ExampleIssues_ListComments() {
 	// 			"By": {
 	// 				"ID": 1,
 	// 				"Domain": "example.org",
+	// 				"CanonicalMe": "",
 	// 				"Elsewhere": null,
 	// 				"Login": "gopher",
 	// 				"Name": "Sample Gopher",
