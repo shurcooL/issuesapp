@@ -23,7 +23,7 @@ Development
 This package relies on `go generate` directives to process and statically embed assets. For development only, you may need extra dependencies. You can build and run the package in development mode, where all assets are always read and processed from disk:
 
 ```bash
-go build -tags=dev something/that/uses/issuesapp
+go build -tags=issuesappdev something/that/uses/issuesapp
 ```
 
 When you're done with development, you should run `go generate` and commit that:

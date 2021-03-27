@@ -1,4 +1,4 @@
-// +build dev
+// +build issuesappdev
 
 package assets
 
