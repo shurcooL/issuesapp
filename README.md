@@ -2,7 +2,6 @@ issuesapp
 =========
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/shurcooL/issuesapp.svg)](https://pkg.go.dev/github.com/shurcooL/issuesapp)
-[![Build Status](https://travis-ci.org/shurcooL/issuesapp.svg?branch=master)](https://travis-ci.org/shurcooL/issuesapp)
 
 Package issuesapp is a web frontend for an issues service.
 
@@ -13,7 +12,7 @@ It is implemented using this very package.
 Installation
 ------------
 
-```bash
+```sh
 go get github.com/shurcooL/issuesapp
 ```
 

@@ -1,4 +1,4 @@
-// +build ignore
+//go:build ignore
 
 // An app that serves mock issues for development and testing.
 package main
