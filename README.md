@@ -38,7 +38,6 @@ Directories
 | Path                                                                                  | Synopsis                                                                                  |
 |---------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
 | [assets](https://pkg.go.dev/github.com/shurcooL/issuesapp/assets)                     | Package assets contains assets for issuesapp.                                             |
-| [cmd/asanaissues](https://pkg.go.dev/github.com/shurcooL/issuesapp/cmd/asanaissues)   | asanaissues is a simple test program for issuesapp that uses Asana API-backed services.   |
 | [cmd/githubissues](https://pkg.go.dev/github.com/shurcooL/issuesapp/cmd/githubissues) | githubissues is a simple test program for issuesapp that uses GitHub API-backed services. |
 | [common](https://pkg.go.dev/github.com/shurcooL/issuesapp/common)                     | Package common contains common code for backend and frontend.                             |
 | [component](https://pkg.go.dev/github.com/shurcooL/issuesapp/component)               | Package component contains individual components that can render themselves as HTML.      |
