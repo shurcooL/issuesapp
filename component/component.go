@@ -70,6 +70,8 @@ func (e Event) icon() *html.Node {
 		icon = octicon.Pencil()
 	case issues.Labeled, issues.Unlabeled:
 		icon = octicon.Tag()
+	case issues.Milestoned, issues.Demilestoned:
+		icon = octicon.Milestone()
 	case issues.CommentDeleted:
 		icon = octicon.X()
 	default:
@@ -131,6 +133,10 @@ func (e Event) text() []*html.Node {
 		ns = append(ns, Label{Label: *e.Event.Label}.Render()...)
 		ns = append(ns, htmlg.Text(" label"))
 		return ns
+	case issues.Milestoned:
+		return []*html.Node{htmlg.Text("added to the "), htmlg.Strong(e.Event.Milestone.Name), htmlg.Text(" milestone")}
+	case issues.Demilestoned:
+		return []*html.Node{htmlg.Text("removed from the "), htmlg.Strong(e.Event.Milestone.Name), htmlg.Text(" milestone")}
 	case issues.CommentDeleted:
 		return []*html.Node{htmlg.Text("deleted a comment")}
 	default:
